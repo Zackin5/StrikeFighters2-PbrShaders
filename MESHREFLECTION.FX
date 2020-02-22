@@ -111,98 +111,6 @@ struct PS_INPUT
 };
 
 //--------------------------------------------------------------------------------------
-		
-float3 compute_per_pixel_ambient_diffuse(float3 N, float3 P)
-{
-	float3 diffuse = g_AmbientLight + g_DirLight.color * max(0, dot(N, -g_DirLight.dir));
-
-	// do per-pixel light sourcing for point/spot lights
-	for (int i = 0; i < g_NumPointLights; i++)
-	{
-		const float3 L = g_aPointLights[i].pos - P;
-		const float L2 = dot(L, L);
-		if (L2 < g_aPointLights[i].Range2)
-		{
-			const float n_dot_l = dot(N, L);			
-			if (n_dot_l > 0)
-			{
-				const float lenL = sqrt(L2);
-				const float Ln = lenL * g_aPointLights[i].invRange;
-				float cp = 0;
-				if (Ln < 0.5)
-				{
-					cp = 1.0-2.0*Ln*Ln;
-				}
-				else
-				{
-					cp = 2*(1.0-Ln)*(1.0-Ln);
-				}
-				cp *= (n_dot_l / lenL);
-				diffuse += (g_aPointLights[i].color * cp);
-			}
-		}
-	}
-	for (int j = 0; j < g_NumSpotLights; j++)
-	{
-		const float3 L = g_aSpotLights[j].pos - P;
-		const float L2 = dot(L, L);
-		if (L2 < g_aSpotLights[j].Range2)
-		{
-			const float n_dot_l = dot(N, L);
-			if (n_dot_l > 0.0)
-			{
-				const float lenL = sqrt(L2);
-				const float inv_lenL = 1.0 / lenL;
-				const float3 Lu = -L * inv_lenL;
-				const float ca = dot(Lu, g_aSpotLights[j].dir);
-				if (ca > g_aSpotLights[j].angles.y)
-				{
-					const float Ln = lenL * g_aSpotLights[j].invRange;
-					float cp = 0;
-					if (Ln < 0.5)
-					{
-						cp = 1.0-2.0*Ln*Ln;
-					}
-					else
-					{
-						cp = 2*(1.0-Ln)*(1.0-Ln);
-					}
-					if (ca < g_aSpotLights[j].angles.x)
-					{
-						cp *= (ca - g_aSpotLights[j].angles.y) * g_aSpotLights[j].angles.z;
-					}						
-					cp *= (n_dot_l * inv_lenL);
-					diffuse += (g_aSpotLights[j].color * cp);
-				}
-			}
-		}
-	}	
-	
-	return (saturate(diffuse));
-}
-
-//--------------------------------------------------------------------------------------
-
-float3 compute_per_pixel_specular(float3 N, float3 P)
-{
-	float3 specular = float3(0.0f, 0.0f, 0.0f);
-	
-	if (g_SpecularPower > 1.0)
-	{
-		const float3 H = -normalize(P) - g_DirLight.dir;
-	
-		const float h_dot_n = dot(H, N);
-		if (h_dot_n > 0.0)
-		{
-			const float unit_h_dot_n = min(1.0, h_dot_n / length(H));
-			specular = (pow(unit_h_dot_n, g_SpecularPower) * g_SpecularColor);
-		}
-	}
-	
-	return (specular);
-}
-
-//--------------------------------------------------------------------------------------
 
 float3 add_fog(float3 Color, float FogDist, float FogZ)
 {
@@ -345,6 +253,7 @@ VS_OUTPUT VS( VS_INPUT input )
 //--------------------------------------------------------------------------------------
 
 #include "PBR.FX"
+// #include "IRRADIANCE.FX"
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
@@ -357,7 +266,18 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
 				
-	const float4 reflec = g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1);
+	// const float4 reflec = g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1);
+
+	float4 reflec = 0.0;
+
+	uint rX, rY;
+	g_MaterialTexture1.GetDimensions(rX, rY);
+
+	float offset = 13.0f;
+	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1) * 0.29411764705882354;
+	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 + (offset / float2(rX, rY))) * 0.35294117647058826;
+	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 - (offset / float2(rX, rY))) * 0.35294117647058826;
+
 	float4 albedo;
 	float4 output;
 	
@@ -375,6 +295,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		if (albedo.a > 0)
 		{ 
 			output = Pbr(input, albedo, reflec, reflec.a, roughness, ao);				
+			// output = Pbr(input, reflec, float4(g_AmbientLight, 1), reflec.a, roughness, ao);		 // debug		
 					  	
 			if (g_bFogEnabled)
 			{
