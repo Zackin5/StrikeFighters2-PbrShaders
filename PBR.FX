@@ -5,6 +5,11 @@ float3 fresnelSchlick(float cosTheta, float3 F0)
     return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
 }  
 
+float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
+{
+    return F0 + (max((1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
+}   
+
 float DistributionGGX(float3 N, float3 H, float roughness)
 {
     float a      = roughness*roughness;
@@ -71,13 +76,13 @@ float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 
 float4 Tonemap(float4 color)
 {
-	color = color / (color + 1.0);
+	// color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 
     return color;
 }
 
-float4 Pbr(PS_INPUT input, float4 albedo, float metallic, float roughness, float ao)
+float4 Pbr(PS_INPUT input, float4 albedo, float4 irradiance, float metallic, float roughness, float ao)
 {
 	// Degamma diffuse texture
 	albedo = pow(albedo, 2.2);
@@ -105,8 +110,15 @@ float4 Pbr(PS_INPUT input, float4 albedo, float metallic, float roughness, float
 	}
 	
 	// finalize
-	float4 ambient = float4(g_AmbientLight, 1) * albedo * ao;
-	float4 color = ambient + Lo;
+	// float4 ambient = float4(g_AmbientLight, 1) * albedo * ao;
+
+    // Irradiance
+    float3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    float3 kD = 1.0 - kS;
+    float3 diffuse = irradiance * albedo;
+    float3 ambient = (kD * diffuse) * ao;
+
+	float4 color = float4(ambient, albedo.a) + Lo;
 		
 	return Tonemap(color);
 }
