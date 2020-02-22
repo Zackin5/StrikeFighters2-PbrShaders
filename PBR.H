@@ -82,11 +82,6 @@ float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, floa
 	// irradiance = pow(irradiance, 2.2);
 	albedo = pow(albedo, 2.2);
 
-	// Bumpmap normal
-	// float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
-	// Nt = normalize(Nt);
-
-	// float3 N = normalize(input.norm_w);	// texture normal
 	float3 V = -normalize(input.pos_w.xyz);
 	
 	float3 F0 = 0.04;

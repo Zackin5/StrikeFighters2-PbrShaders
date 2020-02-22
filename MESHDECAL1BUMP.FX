@@ -1,5 +1,5 @@
 //--------------------------------------------------------------------------------------
-// File: twNormal1Bump.fx
+// File: meshDecal1Bump.fx
 // Copyright (c) 2009 Third Wire Productions, Inc.
 //--------------------------------------------------------------------------------------
 
@@ -45,7 +45,6 @@ cbuffer cbGlobal
 	float3		g_AmbientLight;
 	DirLight	g_DirLight;
     float3		g_CameraPos;
-	int			g_bBumpEnabled;
 	int			g_bInReflection;
 };
 
@@ -54,6 +53,8 @@ cbuffer cbPerMaterial
  	int			g_bClampTexture;
 	int			g_bFogEnabled;
  	int			g_bLightEnabled;
+ 	int			g_bSpecularEnabled;
+	float		g_SpecularLevel;
 	float		g_SpecularPower;
   	float3		g_SpecularColor;	// specular level * dir light specular color * mat specular color
   	float		g_BumpAmount;
@@ -63,13 +64,14 @@ cbuffer cbPerMesh
 {
 	float4x4	g_mMeshToWorld;
 	int			g_NumPointLights;
-	int			g_NumSpotLights;
     PointLight	g_aPointLights[8];
+	int			g_NumSpotLights;
     SpotLight	g_aSpotLights[2];
 };
 
-Texture2D g_MaterialTexture;
+Texture2D g_MaterialTexture0;
 Texture2D g_BumpNormalTexture;
+Texture2D g_MaterialTexture2;
 
 SamplerState g_TextureWrapSampler
 {
@@ -103,23 +105,28 @@ struct VS_INPUT
 {
     float3	pos			: POSITION; 
     float3	norm		: NORMAL;
-	float2	uv			: TEXCOORD;
+	float2	uv0			: TEXCOORD0;
+	float2	uv1			: TEXCOORD1;
+	float2	uv2			: TEXCOORD2;
+	float2	uv3			: TEXCOORD3;
 };
 
 struct VS_OUTPUT
 {
- 	float4	pos_w		: COLOR0;				//xyz = world space pos, w = fogdist
-	float3	norm_w		: COLOR1;				//world space normal
-	float2	uv			: TEXCOORD;
+ 	float4	pos_w		: COLOR0;			//xyz = world space pos, w = fogdist
+	float3 	norm_w		: COLOR1;			//xyz = world space normal
+    float2	uv0			: TEXCOORD0;
+    float2	uv2			: TEXCOORD1;
 
     float4	pos			: SV_POSITION;
 };
 
 struct PS_INPUT
 {
- 	float4	pos_w		: COLOR0;				//xyz = world space pos, w = fogdist
-	float3	norm_w		: COLOR1;				//world space normal
-	float2	uv			: TEXCOORD;
+ 	float4	pos_w		: COLOR0;			//xyz = world space pos, w = fogdist
+	float3 	norm_w		: COLOR1;			//xyz = world space normal
+    float2	uv0			: TEXCOORD0;
+    float2	uv2			: TEXCOORD1;
 };
 
 //--------------------------------------------------------------------------------------
@@ -145,6 +152,103 @@ float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv)
 		bT *= -1.0f;
 	}	
 	return float3x3( nT, bT, N);
+}
+
+//--------------------------------------------------------------------------------------
+
+float3 compute_per_pixel_ambient_diffuse(float3x3 TangentFrame, float3 Nt, float3 P)
+{
+	const float3 light_t = mul(TangentFrame, -g_DirLight.dir);
+	
+	float3 diffuse = g_AmbientLight + g_DirLight.color * max(0, dot(Nt, light_t));
+
+	// do per-pixel light sourcing for point/spot lights
+	for (int i = 0; i < g_NumPointLights; i++)
+	{
+		const float3 L = g_aPointLights[i].pos - P;
+		const float L2 = dot(L, L);
+		if (L2 < g_aPointLights[i].Range2)
+		{
+			const float3 Lt = mul(TangentFrame, L);
+			const float n_dot_l = dot(Nt, Lt);
+			if (n_dot_l > 0.0)
+			{
+				const float lenL = sqrt(L2);
+				const float Ln = lenL * g_aPointLights[i].invRange;
+				float cp = 0;
+				if (Ln < 0.5)
+				{
+					cp = 1.0-2.0*Ln*Ln;
+				}
+				else
+				{
+					cp = 2*(1.0-Ln)*(1.0-Ln);
+				}
+				cp *= (n_dot_l / lenL);
+				diffuse += (g_aPointLights[i].color * cp);
+			}
+		}
+	}
+	for (int j = 0; j < g_NumSpotLights; j++)
+	{
+		const float3 L = g_aSpotLights[j].pos - P;
+		const float L2 = dot(L, L);
+		if (L2 < g_aSpotLights[j].Range2)
+		{
+			const float3 Lt = mul(TangentFrame, L);
+			const float n_dot_l = dot(Nt, Lt);
+			if (n_dot_l > 0.0)
+			{
+				const float lenL = sqrt(L2);
+				const float inv_lenL = 1.0 / lenL;
+				const float3 Lu = -L * inv_lenL;
+				const float ca = dot(Lu, g_aSpotLights[j].dir);
+				if (ca > g_aSpotLights[j].angles.y)
+				{
+					const float Ln = lenL * g_aSpotLights[j].invRange;
+					float cp = 0;
+					if (Ln < 0.5)
+					{
+						cp = 1.0-2.0*Ln*Ln;
+					}
+					else
+					{
+						cp = 2*(1.0-Ln)*(1.0-Ln);
+					}
+					if (ca < g_aSpotLights[j].angles.x)
+					{
+						cp *= (ca - g_aSpotLights[j].angles.y) * g_aSpotLights[j].angles.z;
+					}						
+					cp *= (n_dot_l * inv_lenL);
+					diffuse += (g_aSpotLights[j].color * cp);
+				}
+			}
+		}	
+	}
+				
+	return saturate(diffuse);
+}
+
+//--------------------------------------------------------------------------------------
+
+float3 compute_per_pixel_specular(float3x3 TangentFrame, float3 Nt, float3 P)
+{
+	float3 specular = float3(0.0f, 0.0f, 0.0f);
+	
+	if (g_SpecularPower > 1.0)
+	{
+		const float3 H = -normalize(P) - g_DirLight.dir;
+		const float3 Ht = mul(TangentFrame, H);
+		
+		const float h_dot_n = dot(Ht, Nt);
+		if (h_dot_n > 0.0)
+		{
+			const float unit_h_dot_n = min(1.0, h_dot_n / length(Ht));
+			specular = (pow(unit_h_dot_n, g_SpecularPower) * g_SpecularColor);
+		}
+	}
+	
+	return (specular);
 }
 
 //--------------------------------------------------------------------------------------
@@ -248,7 +352,7 @@ float4 compute_pos( const float4 P  )
 
 	return (pos);
 }
- 
+
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
@@ -257,17 +361,17 @@ VS_OUTPUT VS( VS_INPUT input )
 {    
     VS_OUTPUT output;
    
-	const float4 P = mul(float4(input.pos, 1.0), g_mMeshToWorld);	// position, world-space
-		
+	const float4 P = mul(float4(input.pos, 1.0), g_mMeshToWorld);	// position, world-space	
+
 //	output.pos = mul(P, g_mViewProj);		
 	output.pos = compute_pos(P);
 
-	const float3 N = mul(input.norm, (float3x3)g_mMeshToWorld);		// normal, world-space	
 	output.pos_w.xyz = P.xyz;
-	output.norm_w = N;
-	
-	output.uv = input.uv;
-	
+	output.norm_w = mul(input.norm, (float3x3)g_mMeshToWorld);		// normal, world-space	
+		
+	output.uv0 = input.uv0;
+	output.uv2 = input.uv2;
+		
 	if (g_bFogEnabled)
 	{
 		const float4 Pv = mul(P, g_mWorldToView);	// position in view-space
@@ -288,53 +392,69 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float metallic = TWNORMAL_METALLIC;
-	const float roughness = TWNORMAL_ROUGHNESS;
-	const float ao = TWNORMAL_AO;
-	
-	float4 output;
+	const float mMetallic = TWNORMAL_METALLIC;
+	const float mRoughness = TWNORMAL_ROUGHNESS;
+	const float mAo = TWNORMAL_AO;
+
+	const float dMetallic = MESHDECAL_METALLIC;
+	const float dRoughness = MESHDECAL_ROUGHNESS;
+	const float dAo = MESHDECAL_AO;
 
 	if (g_bInReflection)
 	{
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
-
+		
+	float4 output;
+	
 	if (!g_bFogEnabled || (input.pos_w.w < g_FogDistance.y))
 	{
+		float4 decal = g_MaterialTexture2.Sample(g_TextureClampSampler, input.uv2);
 		float4 albedo;
 		float3 Np;
 
 		if (!g_bClampTexture)
 		{
-			albedo = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpWrapSampler, input.uv).xyz * 2.0 - 1.0;
+			albedo = g_MaterialTexture0.Sample(g_TextureWrapSampler, input.uv0);
+			Np = g_BumpNormalTexture.Sample(g_BumpWrapSampler, input.uv0).xyz * 2.0 - 1.0;
 		}
 		else
 		{
-			albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
+			albedo = g_MaterialTexture0.Sample(g_TextureClampSampler, input.uv0);
+			Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv0).xyz * 2.0 - 1.0;
 		}
+		 		
+		if (albedo.a > 0.0)
+		{ 
+			float3 diffuse = float3(1.0f,1.0f,1.0f);
+			float3 specular = float3(0.0f,0.0f,0.0f);
+	
+			// Calculate texture normals
+			const float3 N0 = normalize(input.norm_w);
+			const float3x3 tangent_frame = compute_tangent_frame(N0, input.pos_w.xyz, input.uv0);
+			
+			float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
+			float3 normal = normalize(mul(Nt, tangent_frame));
 
-		// Calculate texture normals
-		const float3 N0 = normalize(input.norm_w);
-		const float3x3 tangent_frame = compute_tangent_frame(N0, input.pos_w.xyz, input.uv);
-		
-		float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
-		float3 normal = normalize(mul(Nt, tangent_frame));
+			// Calculate alpha between decal and surface
+			albedo = lerp(albedo, decal, decal.a);
+			float metallic = lerp(mMetallic, dMetallic, decal.a);
+			float roughness = lerp(mRoughness, dRoughness, decal.a);
+			float ao = lerp(mAo, dAo, decal.a);
 
-		// Calculate PBR
-		output = Pbr(input, normal, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
-		
-		if (g_bFogEnabled)
-		{
-			output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
+			// Calculate PBR
+			output = Pbr(input, normal, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
+		  	
+			if (g_bFogEnabled)
+			{
+				output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
+			}		
 		}
 	}
 	else
 	{
 		output = float4(g_FogColor, 1.0);
 	}
-
 	return output;
 }
 
@@ -350,6 +470,6 @@ technique10 Render
 }
 
 //--------------------------------------------------------------------------------------
-// File: twNormal1Bump.fx
+// File: meshDecal1Bump.fx
 //--------------------------------------------------------------------------------------
     
