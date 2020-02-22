@@ -252,31 +252,31 @@ VS_OUTPUT VS( VS_INPUT input )
 // Pixel Shader
 //--------------------------------------------------------------------------------------
 
-#include "PBR.FX"
+#include "PBR.H"
 // #include "IRRADIANCE.FX"
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float metallic = 0.5f;
-	const float roughness = 0.5f;
-	const float ao = 1.0f;
+	const float metallic = MESHREFLECTION_METALLIC;
+	const float roughness = MESHREFLECTION_ROUGHNESS;
+	const float ao = MESHREFLECTION_AO;
 
 	if (g_bInReflection)
 	{
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
 				
-	// const float4 reflec = g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1);
+	const float4 reflec = g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1);
 
-	float4 reflec = 0.0;
+	float4 ambient = 0.0;
 
 	uint rX, rY;
 	g_MaterialTexture1.GetDimensions(rX, rY);
 
 	float offset = 54.0f;
-	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1) * 0.29411764705882354;
-	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 + (offset / float2(rX, rY))) * 0.35294117647058826;
-	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 - (offset / float2(rX, rY))) * 0.35294117647058826;
+	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1) * 0.29411764705882354;
+	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 + (offset / float2(rX, rY))) * 0.35294117647058826;
+	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 - (offset / float2(rX, rY))) * 0.35294117647058826;
 
 	float4 albedo;
 	float4 output;
@@ -294,8 +294,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		 		
 		if (albedo.a > 0)
 		{ 
-			output = Pbr(input, albedo, reflec, metallic, roughness, ao);				
-			// output = Pbr(input, reflec, reflec, reflec.a, roughness, ao);		 // debug		
+			output = Pbr(input, albedo, ambient, metallic, roughness, ao);				
+			// output = Pbr(input, reflec, ambient, reflec, reflec.a, roughness, ao);		 // debug		
 					  	
 			if (g_bFogEnabled)
 			{

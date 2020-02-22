@@ -1,3 +1,5 @@
+#include "PBR_CONFIG.H"
+
 const float PI = 3.14159265359;
 
 float3 fresnelSchlick(float cosTheta, float3 F0)
@@ -104,17 +106,28 @@ float4 Pbr(PS_INPUT input, float4 albedo, float4 irradiance, float metallic, flo
 		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
 	}
 	
-    // Ambient lighting via irradiance
-    float3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
-    float3 kD = 1.0 - kS;
-    kD *= 1.0 - metallic;
+    float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
 
+    // Ambient lighting via irradiance
+    float3 kD = 1.0 - F;
+    kD *= 1.0 - metallic;
     float3 diffuse = irradiance * albedo;
-    float3 ambient = (kD * diffuse) * ao;
+
+    #if PBR_SPECULAR
+        // Specular
+        const float MAX_REFLECTION_LOD = 4.0;
+        float3 prefilteredColor = reflection;
+        float2 brdf = reflection.rg;
+        float3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+
+        float3 ambient = (kD * diffuse + specular) * ao;
+    #else
+        float3 ambient = (kD * diffuse) * ao;
+    #endif
 
 	float4 color = float4(ambient, albedo.a) + Lo;
     
-    // Tonemap
+    // Tonemap HDR and gamma
 	color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		

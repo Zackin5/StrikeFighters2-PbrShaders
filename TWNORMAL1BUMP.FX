@@ -124,128 +124,6 @@ struct PS_INPUT
 
 //--------------------------------------------------------------------------------------
 
-float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv)
-{
-	// get edge vectors of the pixel triangle
-	const float3 dp1 = ddx(P);
-	const float3 dp2 = ddy(P);
-	const float2 duv1 = ddx(uv);
-	const float2 duv2 = ddy(uv);
-
-	// solve the linear system
-	const float2x3 M = float2x3(dp1, dp2);
-	const float3 T = mul(float2(duv1.x, duv2.x), M);
-	const float3 B = mul(float2(duv1.y, duv2.y), M);
-
-	// construct tangent frame
-	float3 bT = normalize( cross(N, T) );
-	const float3 nT = cross(bT, N);
-	if (dot(bT, B) < 0)
-	{
-		bT *= -1.0f;
-	}	
-	return float3x3( nT, bT, N);
-}
-
-//--------------------------------------------------------------------------------------
-
-float3 compute_per_pixel_ambient_diffuse(float3x3 TangentFrame, float3 Nt, float3 P)
-{
-	const float3 light_t = mul(TangentFrame, -g_DirLight.dir);
-	
-	float3 diffuse = g_AmbientLight + g_DirLight.color * max(0, dot(Nt, light_t));
-
-	// do per-pixel light sourcing for point/spot lights
-	for (int i = 0; i < g_NumPointLights; i++)
-	{
-		const float3 L = g_aPointLights[i].pos - P;
-		const float L2 = dot(L, L);
-		if (L2 < g_aPointLights[i].Range2)
-		{
-			const float3 Lt = mul(TangentFrame, L);
-			const float n_dot_l = dot(Nt, Lt);
-			if (n_dot_l > 0.0)
-			{
-				const float lenL = sqrt(L2);
-				const float Ln = lenL * g_aPointLights[i].invRange;
-				float cp = 0;
-				if (Ln < 0.5)
-				{
-					cp = 1.0-2.0*Ln*Ln;
-				}
-				else
-				{
-					cp = 2*(1.0-Ln)*(1.0-Ln);
-				}
-				cp *= (n_dot_l / lenL);
-				diffuse += (g_aPointLights[i].color * cp);
-			}
-		}
-	}
-	for (int j = 0; j < g_NumSpotLights; j++)
-	{
-		const float3 L = g_aSpotLights[j].pos - P;
-		const float L2 = dot(L, L);
-		if (L2 < g_aSpotLights[j].Range2)
-		{
-			const float3 Lt = mul(TangentFrame, L);
-			const float n_dot_l = dot(Nt, Lt);
-			if (n_dot_l > 0.0)
-			{
-				const float lenL = sqrt(L2);
-				const float inv_lenL = 1.0 / lenL;
-				const float3 Lu = -L * inv_lenL;
-				const float ca = dot(Lu, g_aSpotLights[j].dir);
-				if (ca > g_aSpotLights[j].angles.y)
-				{
-					const float Ln = lenL * g_aSpotLights[j].invRange;
-					float cp = 0;
-					if (Ln < 0.5)
-					{
-						cp = 1.0-2.0*Ln*Ln;
-					}
-					else
-					{
-						cp = 2*(1.0-Ln)*(1.0-Ln);
-					}
-					if (ca < g_aSpotLights[j].angles.x)
-					{
-						cp *= (ca - g_aSpotLights[j].angles.y) * g_aSpotLights[j].angles.z;
-					}						
-					cp *= (n_dot_l * inv_lenL);
-					diffuse += (g_aSpotLights[j].color * cp);
-				}
-			}
-		}	
-	}
-				
-	return saturate(diffuse);
-}
-
-//--------------------------------------------------------------------------------------
-
-float3 compute_per_pixel_specular(float3x3 TangentFrame, float3 Nt, float3 P)
-{
-	float3 specular = 0.0;
-	
-	if (g_SpecularPower > 1.0)
-	{
-		const float3 H = -normalize(P) - g_DirLight.dir;
-		const float3 Ht = mul(TangentFrame, H);
-		
-		const float h_dot_n = dot(Ht, Nt);
-		if (h_dot_n > 0.0)
-		{
-			const float unit_h_dot_n = min(1.0, h_dot_n / length(Ht));
-			specular = (pow(unit_h_dot_n, g_SpecularPower) * g_SpecularColor);
-		}
-	}
-	
-	return (specular);
-}
-
-//--------------------------------------------------------------------------------------
-
 float3 add_fog(float3 Color, float FogDist, float FogZ)
 {
 	float3 output = Color;
@@ -381,107 +259,42 @@ VS_OUTPUT VS( VS_INPUT input )
 // Pixel Shader
 //--------------------------------------------------------------------------------------
 
-#include "PBR.FX"
+#include "PBR.H"
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float metallic = 0.5f;
-	const float roughness = 0.5f;
-	const float ao = 1.0f;
-
-	float4 albedo;
-	float3 Np;
-
-	if (!g_bClampTexture)
-	{
-		albedo = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
-		Np = g_BumpNormalTexture.Sample(g_BumpWrapSampler, input.uv).xyz * 2.0 - 1.0;
-	}
-	else
-	{
-		albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
-		Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
-	}
-
-	return Pbr(input, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
-
-	// Degamma diffuse texture
-	/*albedo = pow(albedo, 2.2);
-
-	// Bumpmap normal
-	float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
-	// Nt = normalize(Nt);
-
-	float3 N = normalize(input.norm_w);	// texture normal
-	float3 V = -normalize(input.pos_w.xyz);
+	const float metallic = TWNORMAL_METALLIC;
+	const float roughness = TWNORMAL_ROUGHNESS;
+	const float ao = TWNORMAL_AO;
 	
-	float3 F0 = 0.04;
-    F0 = lerp(F0, albedo, metallic);
-	
-	float4 Lo = float4(0.0, 0.0, 0.0, 0.0);
-	
-	// sun lighting (todo: add other lights)
-	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
-
-	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
-
-	for (int i = 0; i < g_NumPointLights; i++)
-	{
-		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
-	}
-	
-	// finalize
-	float4 ambient = float4(g_AmbientLight, 1) * albedo * ao;
-	float4 color = ambient + Lo;
-		
-	return Tonemap(color);*/
-
-	/*if (g_bInReflection)
-	{
-		clip(input.pos_w.z + g_CameraPos.z);
-	}
-		
 	float4 output;
-	
+
 	if (g_bInReflection)
 	{
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
-			
+
 	if (!g_bFogEnabled || (input.pos_w.w < g_FogDistance.y))
 	{
+		float4 albedo;
 		float3 Np;
 
 		if (!g_bClampTexture)
 		{
-			output = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
+			albedo = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
 			Np = g_BumpNormalTexture.Sample(g_BumpWrapSampler, input.uv).xyz * 2.0 - 1.0;
 		}
 		else
 		{
-			output = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv) ;
+			albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
 			Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
 		}
-		 
-		if (output.a > 0.0)
-		{           	
-			if (g_bLightEnabled)
-			{
-				// do per-pixel light sourcing
-				const float3 N0 = normalize(input.norm_w);
-				const float3x3 tangent_frame = compute_tangent_frame(N0, input.pos_w.xyz, input.uv);
-						
-				float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
-				Nt = normalize(Nt);
-	
-				output.rgb *= compute_per_pixel_ambient_diffuse(tangent_frame, Nt, input.pos_w.xyz);
-				output.rgb += compute_per_pixel_specular(tangent_frame, Nt, input.pos_w.xyz);
-			}
-								     
-			if (g_bFogEnabled)
-			{
-				output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
-			}		
+
+		output = Pbr(input, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
+		
+		if (g_bFogEnabled)
+		{
+			output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
 		}
 	}
 	else
@@ -489,7 +302,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		output = float4(g_FogColor, 1.0);
 	}
 
-	return output;*/
+	return output;
 }
 
 //--------------------------------------------------------------------------------------
