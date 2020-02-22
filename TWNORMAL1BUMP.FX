@@ -384,7 +384,8 @@ VS_OUTPUT VS( VS_INPUT input )
 //--------------------------------------------------------------------------------------
 
 const float metallic = 0.5f;
-const float roughness = 0.35f;
+const float roughness = 0.5f;
+const float ao = 1.0f;
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
@@ -398,9 +399,12 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	}
 	else
 	{
-		albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv) ;
+		albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
 		Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
 	}
+
+	// Correct texture gamma
+	albedo = pow(albedo, 2.2);
 
 	float3 N = normalize(input.norm_w);	// texture normal
 	float3 V = -normalize(input.pos_w.xyz);
@@ -416,7 +420,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
 	
 	// finalize
-	float4 ambient = float4(g_AmbientLight, 1) * albedo;
+	float4 ambient = float4(g_AmbientLight, 1) * albedo * ao;
 	float4 color = ambient + Lo;
 		
 	return Tonemap(color);
