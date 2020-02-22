@@ -3,8 +3,6 @@
 // Copyright (c) 2009 Third Wire Productions, Inc.
 //--------------------------------------------------------------------------------------
 
-#include "PBR.FX"
-
 struct DirLight
 {
     float3	dir;
@@ -383,6 +381,8 @@ VS_OUTPUT VS( VS_INPUT input )
 // Pixel Shader
 //--------------------------------------------------------------------------------------
 
+#include "PBR.FX"
+
 const float metallic = 0.5f;
 const float roughness = 0.5f;
 const float ao = 1.0f;
@@ -403,13 +403,17 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
 	}
 
-	// Correct texture gamma
-	albedo = pow(albedo, 2.2);
+	// Degamma diffuse texture
+	/*albedo = pow(albedo, 2.2);
+
+	// Bumpmap normal
+	float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
+	// Nt = normalize(Nt);
 
 	float3 N = normalize(input.norm_w);	// texture normal
 	float3 V = -normalize(input.pos_w.xyz);
 	
-	float3 F0 = float3(0.04, 0.04, 0.04);
+	float3 F0 = 0.04;
     F0 = lerp(F0, albedo, metallic);
 	
 	float4 Lo = float4(0.0, 0.0, 0.0, 0.0);
@@ -418,12 +422,19 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
 
 	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
+
+	for (int i = 0; i < g_NumPointLights; i++)
+	{
+		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
+	}
 	
 	// finalize
 	float4 ambient = float4(g_AmbientLight, 1) * albedo * ao;
 	float4 color = ambient + Lo;
 		
-	return Tonemap(color);
+	return Tonemap(color);*/
+
+	return Pbr(input, albedo, metallic, roughness, ao);
 
 	/*if (g_bInReflection)
 	{
