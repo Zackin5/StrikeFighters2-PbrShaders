@@ -76,17 +76,17 @@ float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 	return float4((kD * albedo / PI + specular) * radiance * NdotL, 1);
 }
 
-float4 Pbr(PS_INPUT input, float4 albedo, float4 irradiance, float metallic, float roughness, float ao)
+float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness, float ao)
 {
 	// Degamma diffuse texture
-	irradiance = pow(irradiance, 2.2);
+	// irradiance = pow(irradiance, 2.2);
 	albedo = pow(albedo, 2.2);
 
 	// Bumpmap normal
 	// float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
 	// Nt = normalize(Nt);
 
-	float3 N = normalize(input.norm_w);	// texture normal
+	// float3 N = normalize(input.norm_w);	// texture normal
 	float3 V = -normalize(input.pos_w.xyz);
 	
 	float3 F0 = 0.04;
@@ -97,16 +97,16 @@ float4 Pbr(PS_INPUT input, float4 albedo, float4 irradiance, float metallic, flo
 	// Sun lighting (todo: add other lights)
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
 
-	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
+	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 
     // Point lights
     [unroll(8)]
 	for (int i = 0; i < g_NumPointLights; i++)
 	{
-		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
+		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 	}
 	
-    float3 F = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
+    float3 F = fresnelSchlickRoughness(max(dot(normal, V), 0.0), F0, roughness);
 
     // Ambient lighting via irradiance
     float3 kD = 1.0 - F;
@@ -128,7 +128,7 @@ float4 Pbr(PS_INPUT input, float4 albedo, float4 irradiance, float metallic, flo
 	float4 color = float4(ambient, albedo.a) + Lo;
     
     // Tonemap HDR and gamma
-	color = color / (color + 1.0);
+	// color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		
 	return color;

@@ -124,6 +124,31 @@ struct PS_INPUT
 
 //--------------------------------------------------------------------------------------
 
+float3x3 compute_tangent_frame(float3 N, float3 P, float2 uv)
+{
+	// get edge vectors of the pixel triangle
+	const float3 dp1 = ddx(P);
+	const float3 dp2 = ddy(P);
+	const float2 duv1 = ddx(uv);
+	const float2 duv2 = ddy(uv);
+
+	// solve the linear system
+	const float2x3 M = float2x3(dp1, dp2);
+	const float3 T = mul(float2(duv1.x, duv2.x), M);
+	const float3 B = mul(float2(duv1.y, duv2.y), M);
+
+	// construct tangent frame
+	float3 bT = normalize( cross(N, T) );
+	const float3 nT = cross(bT, N);
+	if (dot(bT, B) < 0)
+	{
+		bT *= -1.0f;
+	}	
+	return float3x3( nT, bT, N);
+}
+
+//--------------------------------------------------------------------------------------
+
 float3 add_fog(float3 Color, float FogDist, float FogZ)
 {
 	float3 output = Color;
@@ -290,7 +315,21 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 			Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
 		}
 
-		output = Pbr(input, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
+		// Calculate texture normals
+		/*const float3 N0 = normalize(input.norm_w);
+		const float3x3 tangent_frame = compute_tangent_frame(N0, input.pos_w.xyz, input.uv);
+
+		float3 normal = normalize(mul(tangent_frame, Np));
+		
+		float3 Nt = lerp(float3(0.0,0.0,1.0), Np, g_BumpAmount);
+		Nt = normalize(Nt);
+
+		const float3 Ht = mul(tangent_frame, -normalize(input.pos_w.xyz));
+		
+		const float h_dot_n = dot(Ht, Nt);*/
+
+		// Calculate PBR
+		output = Pbr(input, input.norm_w, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
 		
 		if (g_bFogEnabled)
 		{
