@@ -418,13 +418,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	// finalize
 	float4 ambient = float4(g_AmbientLight, 1) * albedo;
 	float4 color = ambient + Lo;
-	
-	// tonemapping
-	color = color / (color + 1.0);
-	color = pow(color, 1.0/2.0);
-	
-	// TODO: apply specular on top of alpha
-	return color;
+		
+	return Tonemap(color);
 
 	/*if (g_bInReflection)
 	{

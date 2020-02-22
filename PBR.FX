@@ -69,6 +69,14 @@ float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 	return float4((kD * albedo / PI + specular) * radiance * NdotL, 1);
 }
 
+float4 Tonemap(float4 color)
+{
+	color = color / (color + 1.0);
+	color = pow(color, 1.0/2.2);
+
+    return color;
+}
+
 // float4 Pbr(PS_INPUT input, float4 albedo, float metallic, float roughness)
 // {
 // 	float3 N = normalize(input.norm_w);	// texture normal
