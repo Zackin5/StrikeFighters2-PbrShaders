@@ -273,7 +273,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	uint rX, rY;
 	g_MaterialTexture1.GetDimensions(rX, rY);
 
-	float offset = 13.0f;
+	float offset = 54.0f;
 	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1) * 0.29411764705882354;
 	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 + (offset / float2(rX, rY))) * 0.35294117647058826;
 	reflec += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 - (offset / float2(rX, rY))) * 0.35294117647058826;
@@ -294,8 +294,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		 		
 		if (albedo.a > 0)
 		{ 
-			output = Pbr(input, albedo, reflec, reflec.a, roughness, ao);				
-			// output = Pbr(input, reflec, float4(g_AmbientLight, 1), reflec.a, roughness, ao);		 // debug		
+			output = Pbr(input, albedo, reflec, metallic, roughness, ao);				
+			// output = Pbr(input, reflec, reflec, reflec.a, roughness, ao);		 // debug		
 					  	
 			if (g_bFogEnabled)
 			{

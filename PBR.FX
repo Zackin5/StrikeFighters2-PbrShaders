@@ -92,22 +92,23 @@ float4 Pbr(PS_INPUT input, float4 albedo, float4 irradiance, float metallic, flo
 	
 	float4 Lo = float4(0.0, 0.0, 0.0, 0.0);
 	
-	// sun lighting (todo: add other lights)
+	// Sun lighting (todo: add other lights)
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
 
 	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
 
+    // Point lights
+    [unroll(8)]
 	for (int i = 0; i < g_NumPointLights; i++)
 	{
 		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
 	}
 	
-	// finalize
-	// float4 ambient = float4(g_AmbientLight, 1) * albedo * ao;
-
-    // Irradiance
+    // Ambient lighting via irradiance
     float3 kS = fresnelSchlickRoughness(max(dot(N, V), 0.0), F0, roughness);
     float3 kD = 1.0 - kS;
+    kD *= 1.0 - metallic;
+
     float3 diffuse = irradiance * albedo;
     float3 ambient = (kD * diffuse) * ao;
 
