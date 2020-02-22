@@ -40,7 +40,7 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float3 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
+float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
 {
 	float3 V = -normalize(worldPos);
 
@@ -66,7 +66,7 @@ float3 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 	
     // return outgoing radiance Lo
 	float NdotL = max(dot(N, L), 0.0);
-	return (kD * albedo / PI + specular) * radiance * NdotL;
+	return float4((kD * albedo / PI + specular) * radiance * NdotL, 1);
 }
 
 // float4 Pbr(PS_INPUT input, float4 albedo, float metallic, float roughness)

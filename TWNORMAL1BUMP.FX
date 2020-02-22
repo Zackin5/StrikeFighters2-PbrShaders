@@ -408,7 +408,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	float3 F0 = float3(0.04, 0.04, 0.04);
     F0 = lerp(F0, albedo, metallic);
 	
-	float3 Lo = float3(0.0, 0.0, 0.0);
+	float4 Lo = float4(0.0, 0.0, 0.0, 0.0);
 	
 	// sun lighting (todo: add other lights)
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
@@ -416,15 +416,15 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, N, albedo, roughness, metallic);
 	
 	// finalize
-	float3 ambient = float3(0.03, 0.03, 0.03) * albedo;
-	float3 color = ambient + Lo;
+	float4 ambient = float4(g_AmbientLight, 1) * albedo;
+	float4 color = ambient + Lo;
 	
 	// tonemapping
-	color = color / (color + float3(1.0, 1.0, 1.0));
-	color = pow(color, float3(1.0, 1.0, 1.0)/float3(2.2, 2.2, 2.2));
+	color = color / (color + 1.0);
+	color = pow(color, 1.0/2.0);
 	
 	// TODO: apply specular on top of alpha
-	return float4(color, albedo.a);
+	return color;
 
 	/*if (g_bInReflection)
 	{
