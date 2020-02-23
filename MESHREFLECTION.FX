@@ -165,12 +165,6 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
 
-	// Default reflect map
-	const float4 reflec = g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1);
-				
-	// PBR irradiance map
-	float3 irradiance = CalculateIrradianceMap(g_MaterialTexture1, input.norm_w);
-
 	float4 albedo;
 	float4 output;
 	
@@ -187,7 +181,10 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		 		
 		if (albedo.a > 0)
 		{ 			
-			output = Pbr(input, input.norm_w, albedo, float4(irradiance, 1), reflec.a, roughness);				
+			// PBR irradiance map
+			float4 irradiance = CalculateIrradianceMap(g_MaterialTexture1, input.norm_w);
+
+			output = Pbr(input, input.norm_w, albedo, irradiance, irradiance.a, roughness);				
 			// output = Pbr(input, input.norm_w, float4(irradiance, 1), float4(irradiance, 1), reflec.a, roughness);		 // debug		
 					  	
 			if (g_bFogEnabled)

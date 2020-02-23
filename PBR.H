@@ -77,9 +77,9 @@ float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 	return float4((kD * albedo / PI + specular) * radiance * NdotL, 1);
 }
 
-float3 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
+float4 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
 {
-	float3 irradiance = 0.0f;
+	float4 irradiance = 0.0f;
 
 	const float3 Nv = mul(normal, (float3x3)g_mWorldToView);				// normal, view-space
 	float sampleDelta = 0.05;
@@ -94,7 +94,7 @@ float3 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
 			uv.x = 0.5 * tangentSample.x * Nv.x + 0.5;
 			uv.y = -0.5 * tangentSample.z * Nv.y + 0.5;
 
-			irradiance += cubemapTex.Sample(g_TextureClampSampler, uv).rgb * cos(theta) * sin(theta);
+			irradiance += cubemapTex.Sample(g_TextureClampSampler, uv) * cos(theta) * sin(theta);
 			nSamples++;
 		}
 	}
