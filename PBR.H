@@ -1,4 +1,5 @@
 #include "PBR_CONFIG.H"
+#include "TWCOMMON.H"
 
 const float PI = 3.14159265359;
 
@@ -102,6 +103,17 @@ float3 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
 	irradiance = PI * irradiance * (1.0 / float(nSamples));
 
     return irradiance;
+}
+
+float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normalTexColor, float bumpAmount)
+{
+    const float3 N0 = normalize(norm_w);
+    const float3x3 tangentFrame = compute_tangent_frame(N0, pos_w, uv);
+
+    float3 Nt = lerp(float3(0.0,0.0,1.0), normalTexColor, bumpAmount);
+    float3 normal = normalize(mul(Nt, tangentFrame));
+
+    return normal;
 }
 
 float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness)
