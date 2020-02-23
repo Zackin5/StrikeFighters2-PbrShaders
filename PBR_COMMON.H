@@ -6,8 +6,8 @@ const float PI = 3.14159265359;
 
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
-    float r = roughness;
-    float k = (r*r) / 2.0;
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
 
     float num   = NdotV;
     float denom = NdotV * (1.0 - k) + k;

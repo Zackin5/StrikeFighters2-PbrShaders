@@ -118,7 +118,8 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 	}
 	
-    float3 F = fresnelSchlickRoughness(max(dot(normal, V), 0.0), F0, roughness);
+    float vdotN = max(dot(normal, V), 0.0);
+    float3 F = fresnelSchlickRoughness(vdotN, F0, roughness);
 
     // Ambient lighting via irradiance
     float3 kD = 1.0 - F;
@@ -129,11 +130,11 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     // IBF calculations
     const float MAX_REFLECTION_LOD = 4.0;
     float3 prefilteredColor = irradiance; // TODO: mipmap envmap
-    float2 envBRDF = IntegrateBRDF(max(dot(normal, V), 0.0), roughness); // TODO: generate BRDF map once as input textures
-    float3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+    // float2 envBRDF = IntegrateBRDF(max(vdotN, roughness); // TODO: generate BRDF map once as input textures
+    // float3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+    float3 specular = EnvironmentBRDF(roughness, vdotN, prefilteredColor);
     
     float3 ambient = kD * diffuse + specular;
-    // float3 ambient = kD * diffuse;
 
     // Finalize
 	float4 color = float4(ambient, albedo.a) + Lo;  // TODO: fix specular alpha?
