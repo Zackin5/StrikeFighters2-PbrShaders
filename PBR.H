@@ -94,7 +94,7 @@ float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normal
     return normal;
 }
 
-float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness)
+float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float metallic, float roughness)
 {
 	// Degamma diffuse texture
 	albedo = pow(albedo, 2.2);
