@@ -48,7 +48,7 @@ float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
     return ggx1 * ggx2;
 }
 
-float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
+float CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
 {
 	float3 V = -normalize(worldPos);
 
@@ -74,7 +74,8 @@ float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 	
     // return outgoing radiance Lo
 	float NdotL = max(dot(N, L), 0.0);
-	return float4((kD * albedo / PI + specular) * radiance * NdotL, 1);
+
+    return (kD * albedo / PI + specular) * radiance * NdotL;
 }
 
 float4 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
@@ -116,10 +117,7 @@ float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normal
 
 float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness)
 {
-    float alpha = albedo.a;
-
 	// Degamma diffuse texture
-	// irradiance = pow(irradiance, 2.2);
 	albedo = pow(albedo, 2.2);
 
 	float3 V = -normalize(input.pos_w.xyz);
@@ -144,27 +142,17 @@ float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, floa
     float3 F = fresnelSchlickRoughness(max(dot(normal, V), 0.0), F0, roughness);
 
     // Ambient lighting via irradiance
-    float3 kD = 1.0 - F;
+    float4 kD = 1.0 - float4(F, albedo.a);
     kD *= 1.0 - metallic;
-    float3 diffuse = irradiance * albedo;
 
-    #if PBR_SPECULAR
-        // Specular
-        const float MAX_REFLECTION_LOD = 4.0;
-        float3 prefilteredColor = reflection;
-        float2 brdf = reflection.rg;
-        float3 specular = prefilteredColor * (F * brdf.x + brdf.y);
+    float4 diffuse = irradiance * albedo;
+    float4 ambient = kD * diffuse;
 
-        float3 ambient = kD * diffuse + specular;
-    #else
-        float3 ambient = kD * diffuse;
-    #endif
-
-	float3 color = ambient + Lo;
+	float4 color = ambient + Lo;
     
     // Tonemap HDR and gamma
 	color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		
-	return float4(color, alpha);
+	return color;
 }
