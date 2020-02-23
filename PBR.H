@@ -1,7 +1,7 @@
 #include "PBR_CONFIG.H"
+#include "PBR_COMMON.H"
+#include "PBR_SPECULARIBL.H"
 #include "TWCOMMON.H"
-
-const float PI = 3.14159265359;
 
 float3 fresnelSchlick(float cosTheta, float3 F0)
 {
@@ -25,27 +25,6 @@ float DistributionGGX(float3 N, float3 H, float roughness)
     denom = PI * denom * denom;
 	
     return num / denom;	
-}
-
-float GeometrySchlickGGX(float NdotV, float roughness)
-{
-    float r = (roughness + 1.0);
-    float k = (r*r) / 8.0;
-
-    float num   = NdotV;
-    float denom = NdotV * (1.0 - k) + k;
-	
-    return num / denom;
-}
-
-float GeometrySmith(float3 N, float3 V, float3 L, float roughness)
-{
-    float NdotV = max(dot(N, V), 0.0);
-    float NdotL = max(dot(N, L), 0.0);
-    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
-    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
-	
-    return ggx1 * ggx2;
 }
 
 float CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
@@ -83,7 +62,7 @@ float4 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
 	float4 irradiance = 0.0f;
 
 	const float3 Nv = mul(normal, (float3x3)g_mWorldToView);				// normal, view-space
-	float sampleDelta = 0.05;
+	const float sampleDelta = IRRADIANCE_SAMPLEDELTA;
 	float nSamples = 0.0;
 	for(float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)
 	{
@@ -142,13 +121,22 @@ float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, floa
     float3 F = fresnelSchlickRoughness(max(dot(normal, V), 0.0), F0, roughness);
 
     // Ambient lighting via irradiance
-    float4 kD = 1.0 - float4(F, albedo.a);
+    float3 kD = 1.0 - F;
     kD *= 1.0 - metallic;
 
-    float4 diffuse = irradiance * albedo;
-    float4 ambient = kD * diffuse;
+    float3 diffuse = irradiance * albedo;
 
-	float4 color = ambient + Lo;
+    // IBF calculations
+    const float MAX_REFLECTION_LOD = 4.0;
+    float3 prefilteredColor = irradiance; // TODO: mipmap envmap
+    float2 envBRDF = IntegrateBRDF(max(dot(normal, V), 0.0), roughness); // TODO: generate BRDF map once as input textures
+    float3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
+    
+    float3 ambient = kD * diffuse + specular;
+    // float3 ambient = kD * diffuse;
+
+    // Finalize
+	float4 color = float4(ambient, albedo.a) + Lo;  // TODO: fix specular alpha?
     
     // Tonemap HDR and gamma
 	color = color / (color + 1.0);

@@ -185,7 +185,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		if (albedo.a > 0)
 		{ 			
 			output = Pbr(input, input.norm_w, albedo, irradiance, irradiance.a, roughness);				
-			// output = Pbr(input, input.norm_w, float4(irradiance, 1), float4(irradiance, 1), reflec.a, roughness);		 // debug		
+			// output = Pbr(input, input.norm_w, float4(irradiance, 1), float4(irradiance, 1), irradiance.a, roughness);		 // debug		
 					  	
 			if (g_bFogEnabled)
 			{
