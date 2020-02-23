@@ -76,7 +76,7 @@ float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 	return float4((kD * albedo / PI + specular) * radiance * NdotL, 1);
 }
 
-float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness, float ao)
+float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness)
 {
 	// Degamma diffuse texture
 	// irradiance = pow(irradiance, 2.2);
@@ -115,15 +115,15 @@ float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, floa
         float2 brdf = reflection.rg;
         float3 specular = prefilteredColor * (F * brdf.x + brdf.y);
 
-        float3 ambient = (kD * diffuse + specular) * ao;
+        float3 ambient = kD * diffuse + specular;
     #else
-        float3 ambient = (kD * diffuse) * ao;
+        float3 ambient = kD * diffuse;
     #endif
 
 	float4 color = float4(ambient, albedo.a) + Lo;
     
     // Tonemap HDR and gamma
-	// color = color / (color + 1.0);
+	color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		
 	return color;

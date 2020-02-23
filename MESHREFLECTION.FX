@@ -259,7 +259,6 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 {
 	const float metallic = MESHREFLECTION_METALLIC;
 	const float roughness = MESHREFLECTION_ROUGHNESS;
-	const float ao = MESHREFLECTION_AO;
 
 	if (g_bInReflection)
 	{
@@ -273,7 +272,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	uint rX, rY;
 	g_MaterialTexture1.GetDimensions(rX, rY);
 
-	float offset = 54.0f;
+	float offset = 24.0f;
 	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1) * 0.29411764705882354;
 	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 + (offset / float2(rX, rY))) * 0.35294117647058826;
 	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 - (offset / float2(rX, rY))) * 0.35294117647058826;
@@ -294,8 +293,9 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		 		
 		if (albedo.a > 0)
 		{ 
-			output = Pbr(input, input.norm_w, albedo, ambient, metallic, roughness, ao);				
-			// output = Pbr(input, reflec, ambient, reflec, reflec.a, roughness, ao);		 // debug		
+			// output = Pbr(input, input.norm_w, albedo, ambient, metallic, roughness);				
+			output = Pbr(input, input.norm_w, albedo, reflec, metallic, 1.0f - reflec.a);				
+			// output = Pbr(input, reflec, ambient, reflec, reflec.a, roughness);		 // debug		
 					  	
 			if (g_bFogEnabled)
 			{

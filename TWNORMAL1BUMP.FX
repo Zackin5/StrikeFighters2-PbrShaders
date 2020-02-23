@@ -290,7 +290,6 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 {
 	const float metallic = TWNORMAL_METALLIC;
 	const float roughness = TWNORMAL_ROUGHNESS;
-	const float ao = TWNORMAL_AO;
 	
 	float4 output;
 
@@ -323,7 +322,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		float3 normal = normalize(mul(Nt, tangent_frame));
 
 		// Calculate PBR
-		output = Pbr(input, normal, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
+		output = Pbr(input, normal, albedo, float4(g_AmbientLight, 1), metallic, roughness);
 		
 		if (g_bFogEnabled)
 		{
