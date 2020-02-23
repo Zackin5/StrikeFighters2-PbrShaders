@@ -201,10 +201,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		}
 		 		
 		if (albedo.a > 0.0)
-		{ 
-			float3 diffuse = float3(1.0f,1.0f,1.0f);
-			float3 specular = float3(0.0f,0.0f,0.0f);
-	
+		{ 	
 			// Calculate texture normals		
 			float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv0, Np, g_BumpAmount);
 

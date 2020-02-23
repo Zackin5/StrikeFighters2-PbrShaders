@@ -81,22 +81,20 @@ float3 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
 {
 	float3 irradiance = 0.0f;
 
-	float3 up = float3(1.0, 1.0, 1.0);  // TODO: fix direction vector, address bad/no cubemap sampling?
-	float3 right = cross(up, normal);
-	up = cross(normal, right);
-
+	const float3 Nv = mul(normal, (float3x3)g_mWorldToView);				// normal, view-space
 	float sampleDelta = 0.05;
 	float nSamples = 0.0;
 	for(float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)
 	{
 		for(float theta = 0.0; theta < 0.5 * PI; theta += sampleDelta)
 		{
-			// Sphere to cartesian
 			float3 tangentSample = float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-			// Tangent space to world
-			float3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * normal;
 
-			irradiance += cubemapTex.Sample(g_TextureClampSampler, sampleVec).rgb * cos(theta) * sin(theta);
+			float2 uv = 0.0;
+			uv.x = 0.5 * tangentSample.x * Nv.x + 0.5;
+			uv.y = -0.5 * tangentSample.z * Nv.y + 0.5;
+
+			irradiance += cubemapTex.Sample(g_TextureClampSampler, uv).rgb * cos(theta) * sin(theta);
 			nSamples++;
 		}
 	}
