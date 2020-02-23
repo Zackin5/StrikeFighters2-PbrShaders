@@ -76,6 +76,34 @@ float4 CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos,
 	return float4((kD * albedo / PI + specular) * radiance * NdotL, 1);
 }
 
+float3 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
+{
+	float3 irradiance = 0.0f;
+
+	float3 up = float3(1.0, 1.0, 1.0);  // TODO: fix direction vector, address bad/no cubemap sampling?
+	float3 right = cross(up, normal);
+	up = cross(normal, right);
+
+	float sampleDelta = 0.05;
+	float nSamples = 0.0;
+	for(float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)
+	{
+		for(float theta = 0.0; theta < 0.5 * PI; theta += sampleDelta)
+		{
+			// Sphere to cartesian
+			float3 tangentSample = float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
+			// Tangent space to world
+			float3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * normal;
+
+			irradiance += cubemapTex.Sample(g_TextureClampSampler, sampleVec).rgb * cos(theta) * sin(theta);
+			nSamples++;
+		}
+	}
+	irradiance = PI * irradiance * (1.0 / float(nSamples));
+
+    return irradiance;
+}
+
 float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness)
 {
 	// Degamma diffuse texture

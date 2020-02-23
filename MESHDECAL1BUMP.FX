@@ -394,11 +394,9 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 {
 	const float mMetallic = TWNORMAL_METALLIC;
 	const float mRoughness = TWNORMAL_ROUGHNESS;
-	const float mAo = TWNORMAL_AO;
 
 	const float dMetallic = MESHDECAL_METALLIC;
 	const float dRoughness = MESHDECAL_ROUGHNESS;
-	const float dAo = MESHDECAL_AO;
 
 	if (g_bInReflection)
 	{
@@ -440,10 +438,9 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 			albedo = lerp(albedo, decal, decal.a);
 			float metallic = lerp(mMetallic, dMetallic, decal.a);
 			float roughness = lerp(mRoughness, dRoughness, decal.a);
-			float ao = lerp(mAo, dAo, decal.a);
 
 			// Calculate PBR
-			output = Pbr(input, normal, albedo, float4(g_AmbientLight, 1), metallic, roughness, ao);
+			output = Pbr(input, normal, albedo, float4(g_AmbientLight, 1), metallic, roughness);
 		  	
 			if (g_bFogEnabled)
 			{

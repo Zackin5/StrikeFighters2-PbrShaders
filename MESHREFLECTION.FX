@@ -270,38 +270,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	const float4 reflec = g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1);
 				
 	// PBR irradiance map
-	float3 irradiance = 0.0f;
-
-	float3 up = float3(1.0, 1.0, 1.0);
-	float3 right = cross(up, input.norm_w);
-	up = cross(input.norm_w, right);
-
-	float sampleDelta = 0.05;
-	float nSamples = 0.0;
-	for(float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)
-	{
-		for(float theta = 0.0; theta < 0.5 * PI; theta += sampleDelta)
-		{
-			// Sphere to cartesian
-			float3 tangentSample = float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-			// Tangent space to world
-			float3 sampleVec = tangentSample.x * right + tangentSample.y * up + tangentSample.z * input.norm_w;
-
-			irradiance += g_MaterialTexture1.Sample(g_TextureClampSampler, sampleVec).rgb * cos(theta) * sin(theta);
-			nSamples++;
-		}
-	}
-	irradiance = PI * irradiance * (1.0 / float(nSamples));
-
-	// Blurred map
-	float4 ambient = 0.0;
-	uint rX, rY;
-	g_MaterialTexture1.GetDimensions(rX, rY);
-
-	float offset = 24.0f;
-	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1) * 0.29411764705882354;
-	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 + (offset / float2(rX, rY))) * 0.35294117647058826;
-	ambient += g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv1 - (offset / float2(rX, rY))) * 0.35294117647058826;
+	float3 irradiance = CalculateIrradianceMap(g_MaterialTexture1, input.norm_w);
 
 	float4 albedo;
 	float4 output;
@@ -318,9 +287,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		}
 		 		
 		if (albedo.a > 0)
-		{ 
-			// output = Pbr(input, input.norm_w, albedo, ambient, metallic, roughness);				
-			// output = Pbr(input, input.norm_w, albedo, reflec, metallic, 1.0f - reflec.a);				
+		{ 			
 			output = Pbr(input, input.norm_w, albedo, float4(irradiance, 1), reflec.a, roughness);				
 			// output = Pbr(input, reflec, ambient, reflec, reflec.a, roughness);		 // debug		
 					  	
