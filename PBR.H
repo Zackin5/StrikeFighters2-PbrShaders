@@ -116,6 +116,8 @@ float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normal
 
 float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, float metallic, float roughness)
 {
+    float alpha = albedo.a;
+
 	// Degamma diffuse texture
 	// irradiance = pow(irradiance, 2.2);
 	albedo = pow(albedo, 2.2);
@@ -158,11 +160,11 @@ float4 Pbr(PS_INPUT input, float3 normal, float4 albedo, float4 irradiance, floa
         float3 ambient = kD * diffuse;
     #endif
 
-	float4 color = float4(ambient, albedo.a) + Lo;
+	float3 color = ambient + Lo;
     
     // Tonemap HDR and gamma
 	color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		
-	return color;
+	return float4(color, alpha);
 }
