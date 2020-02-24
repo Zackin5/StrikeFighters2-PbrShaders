@@ -94,10 +94,12 @@ float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normal
     return normal;
 }
 
-float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float metallic, float roughness)
+float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float3 specularColor, float metallic, float roughness)
 {
 	// Degamma diffuse texture
 	albedo = pow(albedo, 2.2);
+	// irradiance = pow(irradiance, 2.2);
+	// specularColor = pow(specularColor, 2.2);
 
 	float3 V = -normalize(input.pos_w.xyz);
 	
@@ -129,19 +131,32 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 
     // IBF calculations
     const float MAX_REFLECTION_LOD = 4.0;
-    float3 prefilteredColor = irradiance; // TODO: mipmap envmap
-    // float2 envBRDF = IntegrateBRDF(max(vdotN, roughness); // TODO: generate BRDF map once as input textures
+    float3 prefilteredColor = specularColor; // TODO: mipmap envmap
+    // float2 envBRDF = IntegrateBRDF(max(vdotN, roughness), roughness); // TODO: generate BRDF map once as input textures
+    float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
     // float3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
-    float3 specular = EnvironmentBRDF(roughness, vdotN, prefilteredColor);
+    float3 specular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+    // float3 specular = EnvironmentBRDF(roughness, vdotN, prefilteredColor);
     
-    float3 ambient = kD * diffuse + specular;
+    // float3 ambient = kD * diffuse + specular;
+    float3 ambient = (kD * diffuse) + specular;
 
     // Finalize
 	float4 color = float4(ambient, albedo.a) + Lo;  // TODO: fix specular alpha?
     
     // Tonemap HDR and gamma
-	color = color / (color + 1.0);
+	// color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		
 	return color;
+}
+
+float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float metallic, float roughness)
+{
+    return Pbr(input, normal, albedo, irradiance, irradiance, metallic, roughness);
+}
+
+float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float metallic, float roughness)
+{
+    return Pbr(input, normal, albedo, float4(g_AmbientLight, 1), g_DirLight.dir, metallic, roughness);
 }

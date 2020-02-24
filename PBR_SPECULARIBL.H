@@ -128,7 +128,7 @@ float a0r(float g, float VdotN)
     return ((a004(g, VdotN) - a1vf(g) * 0.04) / 0.96);
 }
 
-float3 EnvironmentBRDF( float g, float vdotN, float3 rf0 )
+float3 EnvironmentBRDF( float g, float vdotN, float3 color )
 {
 	float4 t = float4( 1.0 / 0.96, 0.475, ( 0.0275 - 0.25 * 0.04 ) / 0.96, 0.25 );
 	t *= float4( g, g, g, g );
@@ -136,5 +136,16 @@ float3 EnvironmentBRDF( float g, float vdotN, float3 rf0 )
 	half a0 = t.x * min( t.y, exp2( -9.28 * vdotN ) ) + t.z;
 	half a1 = t.w;
 	
-	return saturate( a0 + rf0 * ( a1 - a0 ) );
+	return saturate( a0 + color * ( a1 - a0 ) );
+}
+
+float2 EnvironmentBRDF( float g, float vdotN)
+{
+	float4 t = float4( 1.0 / 0.96, 0.475, ( 0.0275 - 0.25 * 0.04 ) / 0.96, 0.25 );
+	t *= float4( g, g, g, g );
+	t += float4( 0.0, 0.0, ( 0.015 - 0.75 * 0.04 ) / 0.96, 0.75 );
+	half a0 = t.x * min( t.y, exp2( -9.28 * vdotN ) ) + t.z;
+	half a1 = t.w;
+	
+	return float2(a0, a1);
 }
