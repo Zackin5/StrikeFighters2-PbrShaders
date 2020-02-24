@@ -108,7 +108,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	
 	float4 Lo = float4(0.0, 0.0, 0.0, 0.0);
 	
-	// Sun lighting (todo: add other lights)
+	// Sun lighting (todo: add spot lights)
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
 
 	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
@@ -132,13 +132,9 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     // IBF calculations
     const float MAX_REFLECTION_LOD = 4.0;
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
-    // float2 envBRDF = IntegrateBRDF(max(vdotN, roughness), roughness); // TODO: generate BRDF map once as input textures
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
-    // float3 specular = prefilteredColor * (F * envBRDF.x + envBRDF.y);
     float3 specular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
-    // float3 specular = EnvironmentBRDF(roughness, vdotN, prefilteredColor);
     
-    // float3 ambient = kD * diffuse + specular;
     float3 ambient = (kD * diffuse) + specular;
 
     // Finalize
@@ -158,5 +154,9 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 
 float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float metallic, float roughness)
 {
-    return Pbr(input, normal, albedo, float4(g_AmbientLight, 1), g_DirLight.dir, metallic, roughness);
+    float sunDelta = dot(normal, -g_DirLight.dir);
+    float lightGrad = sunDelta;
+    float3 irrad = lerp(g_AmbientLight / 2, g_DirLight.color, lightGrad);
+
+    return Pbr(input, normal, albedo, float4(irrad, 1), metallic, roughness);
 }

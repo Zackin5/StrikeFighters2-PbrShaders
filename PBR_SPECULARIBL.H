@@ -34,7 +34,7 @@ float3 ImportanceSampleGGX(float2 Xi, float3 N, float roughness)
     H.z = cosTheta;
 
     // Tangent-space vector to world-space
-    float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0 ,1.0) : float3(1.0, 0.0, 0.0);
+    float3 up = abs(N.z) < 0.999 ? float3(0.0, 0.0, 1.0) : float3(1.0, 0.0, 0.0);
     float3 tangent = normalize(cross(up, N));
     float3 bitangent = cross(N, tangent);
 
