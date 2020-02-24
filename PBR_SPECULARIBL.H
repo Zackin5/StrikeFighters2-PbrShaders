@@ -125,11 +125,13 @@ float a004( float g, float vdotN )
 
 float a0r(float g, float VdotN)
 {
+    g = 1.0 - g;
     return ((a004(g, VdotN) - a1vf(g) * 0.04) / 0.96);
 }
 
 float3 EnvironmentBRDF( float g, float vdotN, float3 color )
 {
+    g = 1.0 - g;
 	float4 t = float4( 1.0 / 0.96, 0.475, ( 0.0275 - 0.25 * 0.04 ) / 0.96, 0.25 );
 	t *= float4( g, g, g, g );
 	t += float4( 0.0, 0.0, ( 0.015 - 0.75 * 0.04 ) / 0.96, 0.75 );
@@ -141,6 +143,7 @@ float3 EnvironmentBRDF( float g, float vdotN, float3 color )
 
 float2 EnvironmentBRDF( float g, float vdotN)
 {
+    g = 1.0 - g;
 	float4 t = float4( 1.0 / 0.96, 0.475, ( 0.0275 - 0.25 * 0.04 ) / 0.96, 0.25 );
 	t *= float4( g, g, g, g );
 	t += float4( 0.0, 0.0, ( 0.015 - 0.75 * 0.04 ) / 0.96, 0.75 );

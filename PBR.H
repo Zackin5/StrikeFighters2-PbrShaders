@@ -120,8 +120,9 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 	}
 	
-    float vdotN = max(dot(normal, V), 0.0);
-    float3 F = fresnelSchlickRoughness(vdotN, F0, roughness);
+    float vdotN = saturate(dot(normal, V));
+    // float3 F = fresnelSchlickRoughness(vdotN, F0, roughness);
+    float3 F = a0r(roughness, vdotN);
 
     // Ambient lighting via irradiance
     float3 kD = 1.0 - F;
@@ -130,7 +131,6 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     float3 diffuse = irradiance * albedo;
 
     // IBF calculations
-    const float MAX_REFLECTION_LOD = 4.0;
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
     float3 specular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
@@ -156,7 +156,9 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float 
 {
     float sunDelta = dot(normal, -g_DirLight.dir);
     float lightGrad = sunDelta;
-    float3 irrad = lerp(g_AmbientLight / 2, g_DirLight.color, lightGrad);
+
+    float lum = 0.2126 * g_AmbientLight.r + 0.7152 * g_AmbientLight.g + 0.0722 * g_AmbientLight.b;
+    float3 irrad = lerp(g_AmbientLight, g_DirLight.color, lightGrad);
 
     return Pbr(input, normal, albedo, float4(irrad, 1), metallic, roughness);
 }
