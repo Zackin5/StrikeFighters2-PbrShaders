@@ -27,6 +27,15 @@ float DistributionGGX(float3 N, float3 H, float roughness)
     return num / denom;	
 }
 
+float3 CalculateLightRadiance(float3 lightPos, float3 worldPos, float3 lightColor)
+{
+	float distance = length(lightPos - worldPos);
+    float attenuation = 1.0f / (distance * distance);
+	float3 radiance = lightColor * attenuation;
+
+	return radiance;
+}
+
 float CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
 {
 	float3 V = -normalize(worldPos);
@@ -34,9 +43,7 @@ float CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, 
     // calculate per-light radiance
     float3 L = normalize(lightPos - worldPos);
 	float3 H = normalize(V + L);
-	float distance = length(lightPos - worldPos);
-    float attenuation = 1.0f / (distance * distance);
-	float3 radiance = color * attenuation;
+	float3 radiance = CalculateLightRadiance(lightPos, worldPos, color);
 	
     // cook-torrance brdf
 	float NDF = DistributionGGX(N, H, roughness);
@@ -154,11 +161,14 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 
 float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float metallic, float roughness)
 {
-    float sunDelta = dot(normal, -g_DirLight.dir);
-    float lightGrad = sunDelta;
+	// Calculate fake irradiance map
+	float worldNDot = dot(normal, float3(0.0, 0.0, 1.0)) + 0.7;
+    float sunNDot = dot(normal, -g_DirLight.dir);
 
-    float lum = 0.2126 * g_AmbientLight.r + 0.7152 * g_AmbientLight.g + 0.0722 * g_AmbientLight.b;
-    float3 irrad = lerp(g_AmbientLight, g_DirLight.color, lightGrad);
+	float sunLightCurbe = smoothstep(0.2, 1.0, sunNDot);
 
+	float3 ambLight = lerp(g_AmbientLight * 0.5, g_AmbientLight, worldNDot);
+    float3 irrad = lerp(ambLight, g_DirLight.color, sunLightCurbe);
+	
     return Pbr(input, normal, albedo, float4(irrad, 1), metallic, roughness);
 }
