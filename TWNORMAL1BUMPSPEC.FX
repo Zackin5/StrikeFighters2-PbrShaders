@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------
-// File: twNormal1Bump.fx
-// Copyright (c) 2009 Third Wire Productions, Inc.
+// File: twNormal1Bumpsm.fx
+// Copyright (c) 2010 Third Wire Productions, Inc.
 //--------------------------------------------------------------------------------------
 
 struct DirLight
@@ -68,8 +68,9 @@ cbuffer cbPerMesh
     SpotLight	g_aSpotLights[2];
 };
 
-Texture2D g_MaterialTexture;
-Texture2D g_BumpNormalTexture;
+Texture2D g_MaterialTexture0;
+Texture2D g_MaterialTexture1;
+Texture2D g_MaterialTexture2;
 
 SamplerState g_TextureWrapSampler
 {
@@ -123,7 +124,7 @@ struct PS_INPUT
 };
  
 #include "TWCOMMON.H"
-
+ 
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
@@ -165,39 +166,45 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 {
 	const float metallic = TWNORMAL_METALLIC;
 	const float roughness = TWNORMAL_ROUGHNESS;
-	
-	float4 output;
 
 	if (g_bInReflection)
 	{
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
-
+	
+	float4 output;
+	
 	if (!g_bFogEnabled || (input.pos_w.w < g_FogDistance.y))
 	{
 		float4 albedo;
 		float3 Np;
+		float3 sm;
 
 		if (!g_bClampTexture)
 		{
-			albedo = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpWrapSampler, input.uv).xyz * 2.0 - 1.0;
+			albedo = g_MaterialTexture0.Sample(g_TextureWrapSampler, input.uv);
+			Np = g_MaterialTexture1.Sample(g_BumpWrapSampler, input.uv).xyz * 2.0 - 1.0;
+			sm = g_MaterialTexture2.Sample(g_TextureWrapSampler, input.uv);
 		}
 		else
 		{
-			albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
+			albedo = g_MaterialTexture0.Sample(g_TextureClampSampler, input.uv) ;
+			Np = g_MaterialTexture1.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
+			sm = g_MaterialTexture2.Sample(g_TextureClampSampler, input.uv);
 		}
+		 
+		if (albedo.a > 0.0)
+		{       
+			// Calculate texture normals	
+			float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv, Np, g_BumpAmount);
 
-		// Calculate texture normals	
-		float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv, Np, g_BumpAmount);
-
-		// Calculate PBR
-		output = Pbr(input, normal, albedo, metallic, roughness);
-		
-		if (g_bFogEnabled)
-		{
-			output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
+			// Calculate PBR
+			output = Pbr(input, normal, sm, metallic, roughness * sm);
+								     
+			if (g_bFogEnabled)
+			{
+				output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
+			}		
 		}
 	}
 	else

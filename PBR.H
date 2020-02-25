@@ -80,7 +80,7 @@ float4 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
 			uv.x = 0.5 * tangentSample.x * Nv.x + 0.5;
 			uv.y = -0.5 * tangentSample.z * Nv.y + 0.5;
 
-			irradiance += cubemapTex.Sample(g_TextureClampSampler, uv) * cos(theta) * sin(theta);
+			irradiance += cubemapTex.Sample(pbr_TextureClampSampler, uv) * cos(theta) * sin(theta);
 			nSamples++;
 		}
 	}

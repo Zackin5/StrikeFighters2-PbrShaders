@@ -62,7 +62,7 @@ float4 SampleIBLColor(Texture2D cubemapTex, float3 normal, float roughness)
         float NdotL = max(dot(N, L), 0.0);
         if(NdotL > 0.0)
         {
-            prefilteredColor += cubemapTex.Sample(g_TextureClampSampler, L).rgb * NdotL;
+            prefilteredColor += cubemapTex.Sample(pbr_TextureClampSampler, L).rgb * NdotL;
             totalWeight += NdotL;
         }
     }

@@ -4,6 +4,20 @@
 
 const float PI = 3.14159265359;
 
+SamplerState pbr_TextureWrapSampler
+{
+    Filter = ANISOTROPIC;
+    AddressU = Wrap;
+    AddressV = Wrap;
+};
+
+SamplerState pbr_TextureClampSampler
+{
+    Filter = ANISOTROPIC;
+    AddressU = Clamp;
+    AddressV = Clamp;
+};
+
 float GeometrySchlickGGX(float NdotV, float roughness)
 {
     float r = (roughness + 1.0);

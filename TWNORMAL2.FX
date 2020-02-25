@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------
-// File: twNormal1Bump.fx
-// Copyright (c) 2009 Third Wire Productions, Inc.
+// File: twNormal2.fx
+// Copyright (c) 2008 Third Wire Productions, Inc.
 //--------------------------------------------------------------------------------------
 
 struct DirLight
@@ -45,31 +45,30 @@ cbuffer cbGlobal
 	float3		g_AmbientLight;
 	DirLight	g_DirLight;
     float3		g_CameraPos;
-	int			g_bBumpEnabled;
 	int			g_bInReflection;
 };
 
 cbuffer cbPerMaterial
 {
- 	int			g_bClampTexture;
+ 	int			g_NumTextures;
 	int			g_bFogEnabled;
  	int			g_bLightEnabled;
+ 	int			g_bSpecularEnabled;
 	float		g_SpecularPower;
   	float3		g_SpecularColor;	// specular level * dir light specular color * mat specular color
-  	float		g_BumpAmount;
 };
 
 cbuffer cbPerMesh
 {
 	float4x4	g_mMeshToWorld;
 	int			g_NumPointLights;
-	int			g_NumSpotLights;
     PointLight	g_aPointLights[8];
+	int			g_NumSpotLights;
     SpotLight	g_aSpotLights[2];
 };
 
-Texture2D g_MaterialTexture;
-Texture2D g_BumpNormalTexture;
+Texture2D g_MaterialTexture0;
+Texture2D g_MaterialTexture1;
 
 SamplerState g_TextureWrapSampler
 {
@@ -78,52 +77,38 @@ SamplerState g_TextureWrapSampler
     AddressV = Wrap;
 };
 
-SamplerState g_TextureClampSampler
-{
-    Filter = ANISOTROPIC;
-    AddressU = Clamp;
-    AddressV = Clamp;
-};
-
-SamplerState g_BumpWrapSampler
-{
-    Filter = MIN_MAG_LINEAR_MIP_POINT;
-    AddressU = Wrap;
-    AddressV = Wrap;
-};
-
-SamplerState g_BumpClampSampler
-{
-    Filter = MIN_MAG_LINEAR_MIP_POINT;
-    AddressU = Clamp;
-    AddressV = Clamp;
-};
-
 struct VS_INPUT
 {
     float3	pos			: POSITION; 
     float3	norm		: NORMAL;
-	float2	uv			: TEXCOORD;
+	float2	uv0			: TEXCOORD0;
+	float2	uv1			: TEXCOORD1;
 };
 
 struct VS_OUTPUT
 {
- 	float4	pos_w		: COLOR0;				//xyz = world space pos, w = fogdist
-	float3	norm_w		: COLOR1;				//world space normal
-	float2	uv			: TEXCOORD;
+	float3 	diffuse		: COLOR0;
+	float3 	specular	: COLOR1;
+ 	float4 	pos_w		: COLOR2;				//xyz = world space pos, w = fogdist
+	float3 	norm_w		: COLOR3;				//world space normal
+	float2 	uv0			: TEXCOORD0;
+    float2 	uv1			: TEXCOORD1;
 
     float4	pos			: SV_POSITION;
 };
 
 struct PS_INPUT
 {
- 	float4	pos_w		: COLOR0;				//xyz = world space pos, w = fogdist
-	float3	norm_w		: COLOR1;				//world space normal
-	float2	uv			: TEXCOORD;
+	float3 	diffuse		: COLOR0;
+	float3 	specular	: COLOR1;
+ 	float4 	pos_w		: COLOR2;				//xyz = world space pos, w = fogdist
+	float3 	norm_w		: COLOR3;				//world space normal
+	float2 	uv0			: TEXCOORD0;
+    float2 	uv1			: TEXCOORD1;
 };
- 
-#include "TWCOMMON.H"
 
+#include "TWCOMMON.H"
+ 
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
@@ -134,14 +119,40 @@ VS_OUTPUT VS( VS_INPUT input )
    
 	const float4 P = mul(float4(input.pos, 1.0), g_mMeshToWorld);	// position, world-space
 		
-//	output.pos = mul(P, g_mViewProj);		
+//	output.pos = mul(P, g_mViewProj);
 	output.pos = compute_pos(P);
-
-	const float3 N = mul(input.norm, (float3x3)g_mMeshToWorld);		// normal, world-space	
+			
+	output.uv0 = input.uv0;
+	output.uv1 = input.uv1;
 	output.pos_w.xyz = P.xyz;
-	output.norm_w = N;
 	
-	output.uv = input.uv;
+	if (g_bLightEnabled)
+	{
+	 	const float3 L = -g_DirLight.dir;
+		const float3 N = mul(input.norm, (float3x3)g_mMeshToWorld);	
+
+ 		output.norm_w = N;
+ 		output.diffuse = g_AmbientLight + g_DirLight.color * max(0, dot(N, L));
+	
+		// do per-vertex specular lighting
+		output.specular = float3(0.0, 0.0, 0.0);
+		if (g_bSpecularEnabled && (g_SpecularPower > 1.0))
+		{
+			const float3 H = -normalize(P.xyz) + L;
+			const float h_dot_n = dot(H, N);
+			if (h_dot_n > 0.0)
+			{
+				const float unit_h_dot_n = min(1.0, h_dot_n / length(H));
+				output.specular = pow(abs(unit_h_dot_n), g_SpecularPower) * g_SpecularColor;
+			}
+		}
+	}
+	else
+	{
+		output.norm_w = float3(0.0, 0.0, 0.0);
+		output.diffuse = float3(1.0, 1.0, 1.0);
+		output.specular = float3(0.0, 0.0, 0.0);
+	}
 	
 	if (g_bFogEnabled)
 	{
@@ -166,45 +177,36 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	const float metallic = TWNORMAL_METALLIC;
 	const float roughness = TWNORMAL_ROUGHNESS;
 	
-	float4 output;
-
 	if (g_bInReflection)
 	{
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
-
+			
+	float4 albedo;	
+	float4 output;
+	
 	if (!g_bFogEnabled || (input.pos_w.w < g_FogDistance.y))
 	{
-		float4 albedo;
-		float3 Np;
-
-		if (!g_bClampTexture)
+		albedo = g_MaterialTexture0.Sample(g_TextureWrapSampler, input.uv0);
+  
+  		if (g_NumTextures > 1)
 		{
-			albedo = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpWrapSampler, input.uv).xyz * 2.0 - 1.0;
+			const float4 stage = g_MaterialTexture1.Sample(g_TextureWrapSampler, input.uv1);
+  			albedo.rgb = albedo.rgb * (1.0 - stage.a) + stage.rgb * stage.a;
 		}
-		else
-		{
-			albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
-		}
-
-		// Calculate texture normals	
-		float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv, Np, g_BumpAmount);
-
+		
 		// Calculate PBR
-		output = Pbr(input, normal, albedo, metallic, roughness);
+		output = Pbr(input, input.norm_w, albedo, metallic, roughness);
 		
 		if (g_bFogEnabled)
 		{
 			output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
-		}
+		}		
 	}
 	else
 	{
 		output = float4(g_FogColor, 1.0);
 	}
-
 	return output;
 }
 
@@ -220,6 +222,6 @@ technique10 Render
 }
 
 //--------------------------------------------------------------------------------------
-// File: twNormal1Bump.fx
+// File: twNormal2.fx
 //--------------------------------------------------------------------------------------
     

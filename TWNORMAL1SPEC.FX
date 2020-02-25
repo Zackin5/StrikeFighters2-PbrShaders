@@ -1,6 +1,6 @@
 //--------------------------------------------------------------------------------------
-// File: twNormal1Bump.fx
-// Copyright (c) 2009 Third Wire Productions, Inc.
+// File: twNormal1sm.fx
+// Copyright (c) 2010 Third Wire Productions, Inc.
 //--------------------------------------------------------------------------------------
 
 struct DirLight
@@ -45,7 +45,6 @@ cbuffer cbGlobal
 	float3		g_AmbientLight;
 	DirLight	g_DirLight;
     float3		g_CameraPos;
-	int			g_bBumpEnabled;
 	int			g_bInReflection;
 };
 
@@ -56,7 +55,6 @@ cbuffer cbPerMaterial
  	int			g_bLightEnabled;
 	float		g_SpecularPower;
   	float3		g_SpecularColor;	// specular level * dir light specular color * mat specular color
-  	float		g_BumpAmount;
 };
 
 cbuffer cbPerMesh
@@ -68,8 +66,8 @@ cbuffer cbPerMesh
     SpotLight	g_aSpotLights[2];
 };
 
-Texture2D g_MaterialTexture;
-Texture2D g_BumpNormalTexture;
+Texture2D g_MaterialTexture0;
+Texture2D g_MaterialTexture1;
 
 SamplerState g_TextureWrapSampler
 {
@@ -81,20 +79,6 @@ SamplerState g_TextureWrapSampler
 SamplerState g_TextureClampSampler
 {
     Filter = ANISOTROPIC;
-    AddressU = Clamp;
-    AddressV = Clamp;
-};
-
-SamplerState g_BumpWrapSampler
-{
-    Filter = MIN_MAG_LINEAR_MIP_POINT;
-    AddressU = Wrap;
-    AddressV = Wrap;
-};
-
-SamplerState g_BumpClampSampler
-{
-    Filter = MIN_MAG_LINEAR_MIP_POINT;
     AddressU = Clamp;
     AddressV = Clamp;
 };
@@ -121,9 +105,9 @@ struct PS_INPUT
 	float3	norm_w		: COLOR1;				//world space normal
 	float2	uv			: TEXCOORD;
 };
- 
-#include "TWCOMMON.H"
 
+#include "TWCOMMON.H"
+ 
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
@@ -131,12 +115,12 @@ struct PS_INPUT
 VS_OUTPUT VS( VS_INPUT input )
 {    
     VS_OUTPUT output;
-   
-	const float4 P = mul(float4(input.pos, 1.0), g_mMeshToWorld);	// position, world-space
-		
+    
+ 	const float4 P = mul(float4(input.pos, 1.0), g_mMeshToWorld);	// position, world-space
+ 		
 //	output.pos = mul(P, g_mViewProj);		
 	output.pos = compute_pos(P);
-
+	
 	const float3 N = mul(input.norm, (float3x3)g_mMeshToWorld);		// normal, world-space	
 	output.pos_w.xyz = P.xyz;
 	output.norm_w = N;
@@ -162,43 +146,40 @@ VS_OUTPUT VS( VS_INPUT input )
 #include "PBR.H"
 
 float4 PS( PS_INPUT input ) : SV_TARGET
-{
+{	
 	const float metallic = TWNORMAL_METALLIC;
 	const float roughness = TWNORMAL_ROUGHNESS;
-	
-	float4 output;
 
 	if (g_bInReflection)
 	{
 		clip(input.pos_w.z + g_CameraPos.z);
 	}
-
+			
+	float4 output;
+	
 	if (!g_bFogEnabled || (input.pos_w.w < g_FogDistance.y))
 	{
 		float4 albedo;
-		float3 Np;
+		float3 sm;
 
 		if (!g_bClampTexture)
 		{
-			albedo = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpWrapSampler, input.uv).xyz * 2.0 - 1.0;
+			albedo = g_MaterialTexture0.Sample(g_TextureWrapSampler, input.uv);
+			sm = g_MaterialTexture1.Sample(g_TextureWrapSampler, input.uv);
 		}
 		else
 		{
-			albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
-			Np = g_BumpNormalTexture.Sample(g_BumpClampSampler, input.uv).xyz * 2.0 - 1.0;
+			albedo = g_MaterialTexture0.Sample(g_TextureClampSampler, input.uv) ;
+			sm = g_MaterialTexture1.Sample(g_TextureClampSampler, input.uv);
 		}
-
-		// Calculate texture normals	
-		float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv, Np, g_BumpAmount);
-
+		 
 		// Calculate PBR
-		output = Pbr(input, normal, albedo, metallic, roughness);
+		output = Pbr(input, input.norm_w, albedo, metallic, roughness * sm);
 		
 		if (g_bFogEnabled)
 		{
 			output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
-		}
+		}		
 	}
 	else
 	{
@@ -220,6 +201,6 @@ technique10 Render
 }
 
 //--------------------------------------------------------------------------------------
-// File: twNormal1Bump.fx
+// File: twNormal1.fx
 //--------------------------------------------------------------------------------------
     
