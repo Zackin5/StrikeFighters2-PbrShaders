@@ -157,9 +157,6 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float metallic = MESHREFLECTION_METALLIC;
-	float roughness = MESHREFLECTION_ROUGHNESS;
-
 	if (g_bInReflection)
 	{
 		clip(input.pos_w.z + g_CameraPos.z);
@@ -167,7 +164,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 				
 	// PBR irradiance map
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture1, input.norm_w);
-	roughness = 1 - irradiance.a;
+	float metallic = MESHREFLECTION_METALLIC * irradiance.a;
+	float roughness = MESHREFLECTION_ROUGHNESS * (1 - irradiance.a);
 
 	// PBR IBF specular
 	// float4 specular = SampleIBLColor(g_MaterialTexture1, input.norm_w, roughness);
@@ -190,9 +188,9 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		 		
 		if (albedo.a > 0)
 		{ 			
-			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, roughness);				
-			// output = Pbr(input, input.norm_w, albedo, irradiance, specular, 1.0, 0.0);				
-			// output = Pbr(input, input.norm_w, specular, specular, specular, irradiance.a, roughness);		 // debug		
+			float ambLum = RgbToLum(g_AmbientLight);
+
+			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, roughness);
 					  	
 			if (g_bFogEnabled)
 			{

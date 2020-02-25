@@ -104,8 +104,14 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 {
 	// Degamma diffuse texture
 	albedo = pow(albedo, 2.2);
-	// irradiance = pow(irradiance, 2.2);
-	// specularColor = pow(specularColor, 2.2);
+
+	// Fake roughmap calculations
+	#if (PBR_FAKEROUGHMAP == true)
+		float roughmapDelta = RgbToLum(albedo) * PBR_FAKEROUGHMAP_SCALE;
+		roughmapDelta = 1 - roughmapDelta;
+
+		roughness = saturate(roughness + roughmapDelta);
+	#endif
 
 	float3 V = -normalize(input.pos_w.xyz);
 	
@@ -125,7 +131,19 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     [unroll(8)]
 	for (int i = 0; i < g_NumPointLights; i++)
 	{
-		float3 radiance = CalculateSpotLightRadiance(g_aPointLights[i].color, g_aPointLights[i].pos, input.pos_w.xyz, g_aPointLights[i].invRange, g_aPointLights[i].Range2);
+		float3 radiance = CalculatePointLightRadiance(g_aPointLights[i].color, g_aPointLights[i].pos, input.pos_w.xyz, 
+														g_aPointLights[i].invRange, g_aPointLights[i].Range2);
+		
+		Lo += CalculateLightReflectance(g_aPointLights[i].pos, radiance, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
+	}
+
+	// Spot lights
+    [unroll(8)]
+	for (int i = 0; i < g_NumSpotLights; i++)
+	{
+		float3 radiance = CalculateSpotLightRadiance(g_aSpotLights[i].color, g_aSpotLights[i].pos, input.pos_w.xyz, 
+														g_aSpotLights[i].invRange, g_aSpotLights[i].Range2,
+														g_aSpotLights[i].invRange, g_aSpotLights[i].angles);
 		
 		Lo += CalculateLightReflectance(g_aPointLights[i].pos, radiance, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 	}
@@ -173,6 +191,6 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float 
 	float3 ambLight = lerp(g_AmbientLight * 0.5, g_AmbientLight, worldNDot);
     float3 sunLight = lerp(0, g_DirLight.color, sunLightCurve);
     float3 irrad = saturate(ambLight + sunLight);
-
+	
     return Pbr(input, normal, albedo, float4(irrad, 1), metallic, roughness);
 }
