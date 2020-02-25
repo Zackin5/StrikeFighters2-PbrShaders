@@ -178,7 +178,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 
 	// PBR IBF specular
 	float4 specular = g_MaterialTexture1.Sample(g_TextureWrapSampler, input.uv1);
-	specular = lerp(specular, irradiance, roughness);
+	specular = lerp(specular, irradiance, mRoughness);
 
 	float4 albedo;
 	float4 output;
