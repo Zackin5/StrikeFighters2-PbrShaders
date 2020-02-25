@@ -187,9 +187,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		}
 		 		
 		if (albedo.a > 0)
-		{ 			
-			float ambLum = RgbToLum(g_AmbientLight);
-
+		{
 			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, roughness);
 					  	
 			if (g_bFogEnabled)
