@@ -171,7 +171,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		}
 		 		
 		// Calculate PBR
-		output = Pbr(input, input.norm_w, albedo, g_DirLight.color, metallic, roughness);
+		output = Pbr(input, input.norm_w, albedo, metallic, roughness);
 		
 		if (g_bFogEnabled)
 		{

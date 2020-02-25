@@ -9,7 +9,7 @@
 
 // Physical properties for each ThirdWire shader
 #define TWNORMAL_METALLIC 0.0f
-#define TWNORMAL_ROUGHNESS 0.9f
+#define TWNORMAL_ROUGHNESS 0.85f
 
 #define MESHREFLECTION_METALLIC 0.0f
 #define MESHREFLECTION_ROUGHNESS 0.25f

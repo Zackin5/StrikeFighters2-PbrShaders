@@ -194,8 +194,6 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 
 		// Calculate PBR
 		output = Pbr(input, input.norm_w, albedo, metallic, roughness);
-		// output = float4(irrad, 1);
-		// output = Pbr(input, input.norm_w, float4(irrad, 1), float4(irrad, 1), float4(irrad, 1), metallic, roughness);
 		
 		if (g_bFogEnabled)
 		{

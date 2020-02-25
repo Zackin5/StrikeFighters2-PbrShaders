@@ -158,7 +158,7 @@ VS_OUTPUT VS( VS_INPUT input )
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
 	const float metallic = MESHREFLECTION_METALLIC;
-	const float roughness = MESHREFLECTION_ROUGHNESS;
+	float roughness = MESHREFLECTION_ROUGHNESS;
 
 	if (g_bInReflection)
 	{
@@ -167,7 +167,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 				
 	// PBR irradiance map
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture1, input.norm_w);
-	
+	roughness = 1 - irradiance.a;
+
 	// PBR IBF specular
 	// float4 specular = SampleIBLColor(g_MaterialTexture1, input.norm_w, roughness);
 	float4 specular = g_MaterialTexture1.Sample(g_TextureWrapSampler, input.uv1);
@@ -189,7 +190,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		 		
 		if (albedo.a > 0)
 		{ 			
-			output = Pbr(input, input.norm_w, albedo, irradiance, specular, irradiance.a, roughness);				
+			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, roughness);				
 			// output = Pbr(input, input.norm_w, albedo, irradiance, specular, 1.0, 0.0);				
 			// output = Pbr(input, input.norm_w, specular, specular, specular, irradiance.a, roughness);		 // debug		
 					  	

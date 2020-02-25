@@ -131,4 +131,30 @@ float4 compute_pos( const float4 P  )
 	return (pos);
 }
 
+float3 CalculateSpotLightRadiance(float3 color, float3 lightPos, float3 worldPos, float invRange, float range2)
+{
+	float3 radiance = 0.0;
+
+	const float3 L = lightPos - worldPos;
+	const float L2 = dot(L, L);
+	if (L2 < range2)
+	{
+		const float lenL = sqrt(L2);
+		const float Ln = lenL * invRange;
+		float cp = 0;
+		if (Ln < 0.5)
+		{
+			cp = 1.0-2.0*Ln*Ln;
+		}
+		else
+		{
+			cp = 2*(1.0-Ln)*(1.0-Ln);
+		}
+
+		radiance = color * cp;
+	}
+
+	return radiance;
+}
+
 #endif

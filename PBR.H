@@ -36,14 +36,13 @@ float3 CalculateLightRadiance(float3 lightPos, float3 worldPos, float3 lightColo
 	return radiance;
 }
 
-float CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
+float CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
 {
 	float3 V = -normalize(worldPos);
 
     // calculate per-light radiance
     float3 L = normalize(lightPos - worldPos);
 	float3 H = normalize(V + L);
-	float3 radiance = CalculateLightRadiance(lightPos, worldPos, color);
 	
     // cook-torrance brdf
 	float NDF = DistributionGGX(N, H, roughness);
@@ -55,13 +54,13 @@ float CalculateLightReflectance(float3 lightPos, float3 color, float3 worldPos, 
 	kD *= 1.0 - metallic;
 	
 	float3 numerator = NDF * G * F;
-	float denominator = 4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0);
+	float denominator = 4.0 * saturate(dot(N, V)) * saturate(dot(N, L));
 	float3 specular = numerator / max(denominator, 0.001);
 	
     // return outgoing radiance Lo
-	float NdotL = max(dot(N, L), 0.0);
+	float NdotL = saturate(dot(N, L));
 
-    return (kD * albedo / PI + specular) * radiance * NdotL;
+    return (kD * albedo / PI + specular) * radianceColor * NdotL;
 }
 
 float4 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
@@ -118,13 +117,17 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	// Sun lighting (todo: add spot lights)
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
 
-	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
+	float3 sunRad = CalculateLightRadiance(sunPos, input.pos_w.xyz, g_DirLight.color);
+
+	Lo += CalculateLightReflectance(sunPos, sunRad, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 
     // Point lights
     [unroll(8)]
 	for (int i = 0; i < g_NumPointLights; i++)
 	{
-		Lo += CalculateLightReflectance(g_aPointLights[i].pos, g_aPointLights[i].color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
+		float3 radiance = CalculateSpotLightRadiance(g_aPointLights[i].color, g_aPointLights[i].pos, input.pos_w.xyz, g_aPointLights[i].invRange, g_aPointLights[i].Range2);
+		
+		Lo += CalculateLightReflectance(g_aPointLights[i].pos, radiance, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 	}
 	
     float vdotN = saturate(dot(normal, V));
@@ -148,7 +151,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	float4 color = float4(ambient, albedo.a) + Lo;  // TODO: fix specular alpha?
     
     // Tonemap HDR and gamma
-	// color = color / (color + 1.0);
+	color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		
 	return color;
@@ -165,10 +168,11 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float 
 	float worldNDot = dot(normal, float3(0.0, 0.0, 1.0)) + 0.7;
     float sunNDot = dot(normal, -g_DirLight.dir);
 
-	float sunLightCurbe = smoothstep(0.2, 1.0, sunNDot);
+	float sunLightCurve = smoothstep(0.2, 1.0, sunNDot);
 
 	float3 ambLight = lerp(g_AmbientLight * 0.5, g_AmbientLight, worldNDot);
-    float3 irrad = lerp(ambLight, g_DirLight.color, sunLightCurbe);
-	
+    float3 sunLight = lerp(0, g_DirLight.color, sunLightCurve);
+    float3 irrad = saturate(ambLight + sunLight);
+
     return Pbr(input, normal, albedo, float4(irrad, 1), metallic, roughness);
 }

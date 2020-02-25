@@ -211,7 +211,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 			float roughness = lerp(mRoughness, dRoughness, decal.a);
 
 			// Calculate PBR
-			output = Pbr(input, normal, albedo, float4(g_AmbientLight, 1), metallic, roughness);
+			output = Pbr(input, normal, albedo, metallic, roughness);
 		  	
 			if (g_bFogEnabled)
 			{
