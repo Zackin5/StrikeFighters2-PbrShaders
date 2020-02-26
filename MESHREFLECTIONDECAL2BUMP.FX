@@ -216,23 +216,17 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		}
 		 		 		
 		if (albedo.a > 0.0)
-		{          
-			// decals at 3   
-			float4 decal = g_MaterialTexture3.Sample(g_TextureClampSampler, input.uv3);
-			
+		{          			
 			// Calculate texture normals	
 			float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv0, Np, g_BumpAmount);
+
+			// decals at 3   
+			float4 decal = g_MaterialTexture3.Sample(g_TextureClampSampler, input.uv3);
 
 			// Calculate alpha between decal and surface
 			albedo = lerp(albedo, decal, decal.a);
 			float metallic = lerp(mMetallic, dMetallic, decal.a);
-			float roughness = lerp(mRoughness, dRoughness, decal.a);	
-			
-			decal = g_MaterialTexture3.Sample(g_TextureClampSampler, input.uv3);
-			
-			albedo = lerp(albedo, decal, decal.a);
-			metallic = lerp(metallic, dMetallic, decal.a);
-			roughness = lerp(roughness, dRoughness, decal.a);		
+			float roughness = lerp(mRoughness, dRoughness, decal.a);		
 
 			decal = g_MaterialTexture4.Sample(g_TextureClampSampler, input.uv4);
 			

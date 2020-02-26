@@ -236,10 +236,10 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 
 			albedo = lerp(albedo, decal, decal.a);
 			metallic = lerp(metallic, dMetallic, decal.a);
-			roughness = lerp(1.0 - roughness, dRoughness, decal.a);		
+			roughness = lerp(roughness, dRoughness, decal.a);		
 
 			// Calculate PBR
-			output = Pbr(input, normal, albedo, irradiance, specular, metallic, roughness);				
+			output = Pbr(input, normal, albedo, irradiance, specular, metallic, roughness);	
 				
 			if (g_bFogEnabled)
 			{

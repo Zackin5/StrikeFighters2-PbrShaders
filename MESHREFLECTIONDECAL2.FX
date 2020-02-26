@@ -209,12 +209,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 
 			// Calculate PBR
 			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, roughness);				
-			
-			if (g_bFogEnabled)
-			{
-				output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
-			}	
-			       
+						       
 			if (g_bFogEnabled)
 			{
 				output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);
