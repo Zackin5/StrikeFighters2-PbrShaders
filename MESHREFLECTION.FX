@@ -164,8 +164,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 				
 	// PBR irradiance map
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture1, input.norm_w);
-	float metallic = MESHREFLECTION_METALLIC * irradiance.a;
-	float roughness = MESHREFLECTION_ROUGHNESS * (1 - irradiance.a);
+	float metallic = MESHREFLECTION_METALLIC;
+	float roughness = 1 - ((1 - MESHREFLECTION_ROUGHNESS) * irradiance.a);
 
 	// PBR IBF specular
 	// float4 specular = SampleIBLColor(g_MaterialTexture1, input.norm_w, roughness);
