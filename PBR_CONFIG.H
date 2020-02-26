@@ -1,8 +1,3 @@
-
-// Enables luminance-based fake roughmap sampling
-#define PBR_FAKEROUGHMAP false
-#define PBR_FAKEROUGHMAP_SCALE 0.25f
-
 // Physical properties for each ThirdWire shader
 #define TWNORMAL_METALLIC 0.0f
 #define TWNORMAL_ROUGHNESS 0.85f

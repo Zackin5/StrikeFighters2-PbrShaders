@@ -17,7 +17,7 @@ float DistributionGGX(float3 N, float3 H, float roughness)
 {
     float a      = roughness*roughness;
     float a2     = a*a;
-    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH  = saturate(dot(N, H));
     float NdotH2 = NdotH*NdotH;
 	
     float num   = a2;
@@ -36,7 +36,7 @@ float3 CalculateLightRadiance(float3 lightPos, float3 worldPos, float3 lightColo
 	return radiance;
 }
 
-float CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
+float3 CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
 {
 	float3 V = -normalize(worldPos);
 
@@ -47,7 +47,7 @@ float CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 wo
     // cook-torrance brdf
 	float NDF = DistributionGGX(N, H, roughness);
 	float G = GeometrySmith(N, V, L, roughness);
-	float3 F = fresnelSchlick(max(dot(H, V), 0.0), F0); 
+	float3 F = fresnelSchlick(saturate(dot(H, V)), F0); 
 	
 	float3 kS = F;
 	float3 kD = 1.0 - kS;
@@ -105,27 +105,16 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	// Degamma diffuse texture
 	albedo = pow(albedo, 2.2);
 
-	// Fake roughmap calculations
-	#if (PBR_FAKEROUGHMAP == true)
-		float roughmapDelta = RgbToLum(albedo) * PBR_FAKEROUGHMAP_SCALE;
-		roughmapDelta = 1 - roughmapDelta;
-
-		roughness = saturate(roughness + roughmapDelta);
-	#endif
-
 	float3 V = -normalize(input.pos_w.xyz);
 	
 	float3 F0 = 0.04;
     F0 = lerp(F0, albedo, metallic);
 	
-	float4 Lo = float4(0.0, 0.0, 0.0, 0.0);
+	float3 Lo = float3(0.0, 0.0, 0.0);
 	
-	// Sun lighting (todo: add spot lights)
+	// Sun lighting
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
-
-	float3 sunRad = CalculateLightRadiance(sunPos, input.pos_w.xyz, g_DirLight.color);
-
-	Lo += CalculateLightReflectance(sunPos, sunRad, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
+	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
 
     // Point lights
     [unroll(8)]
@@ -149,8 +138,8 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	}
 	
     float vdotN = saturate(dot(normal, V));
-    // float3 F = fresnelSchlickRoughness(vdotN, F0, roughness);
-    float3 F = a0r(roughness, vdotN);
+    float3 F = fresnelSchlickRoughness(vdotN, F0, roughness);
+    // float3 F = a0r(roughness, vdotN);
 
     // Ambient lighting via irradiance
     float3 kD = 1.0 - F;
@@ -163,10 +152,10 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
     float3 specular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
     
-    float3 ambient = (kD * diffuse) + specular;
+    float3 ambient = kD * diffuse + specular;
 
     // Finalize
-	float4 color = float4(ambient, albedo.a) + Lo;  // TODO: fix specular alpha?
+	float4 color = float4(ambient, albedo.a) + float4(Lo, albedo.a);  // TODO: fix specular alpha?
     
     // Tonemap HDR and gamma
 	color = color / (color + 1.0);
