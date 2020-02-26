@@ -13,7 +13,7 @@
 
 // Sample size for irradiance map calculations
 // The smaller the value the more accurate, but at cost of performance
-#define IRRADIANCE_SAMPLEDELTA 0.05
+#define IRRADIANCE_SAMPLEDELTA 0.15
 
 // Sample count for IBL specular calculations
 // #define IBL_SAMPLECOUNT 1024u
