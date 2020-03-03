@@ -218,7 +218,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 			float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv0, Np, g_BumpAmount);
 
 			// Calculate PBR
-			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, mRoughness);
+			output = Pbr(input, input.norm_w, albedo, irradiance, specular, sm, roughness);
 					  	
 			if (g_bFogEnabled)
 			{
