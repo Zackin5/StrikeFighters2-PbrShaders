@@ -218,8 +218,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 
 			// Calculate alpha between decal and surface
 			albedo = lerp(albedo, decal, decal.a);
-			float metallic = lerp(mMetallic, dMetallic, decal.a);
-			float roughness = lerp(1.0 - sm, dRoughness, decal.a);	
+			float metallic = lerp(sm, dMetallic, decal.a);
+			float roughness = lerp(mRoughness, dRoughness, decal.a);	
 
 			decal = g_MaterialTexture4.Sample(g_TextureClampSampler, input.uv4);
 

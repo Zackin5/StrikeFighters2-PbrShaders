@@ -36,7 +36,7 @@ float3 CalculateLightRadiance(float3 lightPos, float3 worldPos, float3 lightColo
 	return radiance;
 }
 
-float3 CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
+float3 CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness)
 {
 	float3 V = -normalize(worldPos);
 
@@ -51,7 +51,6 @@ float3 CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 w
 	
 	float3 kS = F;
 	float3 kD = 1.0 - kS;
-	kD *= 1.0 - metallic;
 	
 	float3 numerator = NDF * G * F;
 	float denominator = 4.0 * saturate(dot(N, V)) * saturate(dot(N, L));
@@ -100,21 +99,21 @@ float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normal
     return normal;
 }
 
-float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float3 specularColor, float metallic, float roughness)
+float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float3 specularColor, float specular, float roughness)
 {
 	// Degamma diffuse texture
 	albedo = pow(albedo, 2.2);
 
 	float3 V = -normalize(input.pos_w.xyz);
 	
-	float3 F0 = 0.04;
-    F0 = lerp(F0, albedo, metallic);
+	float3 F0 = specular / 12.5f + 0.04f; // Scale specular to min/max at 0.0f to 0.08f
+    // F0 = lerp(F0, albedo, metallic);
 	
 	float3 Lo = float3(0.0, 0.0, 0.0);
 	
 	// Sun lighting
 	float3 sunPos = input.pos_w.xyz - g_DirLight.dir;
-	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
+	Lo += CalculateLightReflectance(sunPos, g_DirLight.color, input.pos_w.xyz, F0, normal, albedo, roughness);
 
     // Point lights
     [unroll(8)]
@@ -123,7 +122,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 		float3 radiance = CalculatePointLightRadiance(g_aPointLights[i].color, g_aPointLights[i].pos, input.pos_w.xyz, 
 														g_aPointLights[i].invRange, g_aPointLights[i].Range2);
 		
-		Lo += CalculateLightReflectance(g_aPointLights[i].pos, radiance, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
+		Lo += CalculateLightReflectance(g_aPointLights[i].pos, radiance, input.pos_w.xyz, F0, normal, albedo, roughness);
 	}
 
 	// Spot lights
@@ -134,7 +133,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 														g_aSpotLights[i].invRange, g_aSpotLights[i].Range2,
 														g_aSpotLights[i].invRange, g_aSpotLights[i].angles);
 		
-		Lo += CalculateLightReflectance(g_aPointLights[i].pos, radiance, input.pos_w.xyz, F0, normal, albedo, roughness, metallic);
+		Lo += CalculateLightReflectance(g_aPointLights[i].pos, radiance, input.pos_w.xyz, F0, normal, albedo, roughness);
 	}
 	
     float vdotN = saturate(dot(normal, V));
@@ -143,16 +142,15 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 
     // Ambient lighting via irradiance
     float3 kD = 1.0 - F;
-    kD *= 1.0 - metallic;
 
     float3 diffuse = irradiance * albedo;
 
     // IBF calculations
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
-    float3 specular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+    float3 calcSpecular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
     
-    float3 ambient = kD * diffuse + specular;
+    float3 ambient = (kD * diffuse) + calcSpecular;
 
     // Finalize
 	float4 color = float4(ambient, albedo.a) + float4(Lo, albedo.a);  // TODO: fix specular alpha?
@@ -162,6 +160,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	color = pow(color, 1.0/2.2);
 		
 	return color;
+	// return float4(F0, 1);
 }
 
 float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float metallic, float roughness)

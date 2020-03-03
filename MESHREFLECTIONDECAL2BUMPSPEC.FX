@@ -192,11 +192,10 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	// PBR irradiance map
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture3, input.norm_w);
 	float mMetallic = MESHREFLECTION_METALLIC;
-	float mRoughness = 1 - ((1 - MESHREFLECTION_ROUGHNESS) * irradiance.a);
+	float mRoughness = MESHREFLECTION_ROUGHNESS;
 
 	// PBR IBF specular
 	float4 specular = g_MaterialTexture3.Sample(g_TextureClampSampler, input.uv3);
-	specular = lerp(specular, irradiance, mRoughness);
 
 	float4 albedo;
 	float4 output;
@@ -229,8 +228,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 
 			// Calculate alpha between decal and surface
 			albedo = lerp(albedo, decal, decal.a);
-			float metallic = lerp(mMetallic, dMetallic, decal.a);
-			float roughness = lerp(1.0 - sm, dRoughness, decal.a);		
+			float metallic = lerp(sm, dMetallic, decal.a);
+			float roughness = lerp(mRoughness, dRoughness, decal.a);		
 			
 			decal = g_MaterialTexture5.Sample(g_TextureClampSampler, input.uv5);
 
@@ -240,7 +239,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 
 			// Calculate PBR
 			output = Pbr(input, normal, albedo, irradiance, specular, metallic, roughness);	
-				
+			
 			if (g_bFogEnabled)
 			{
 				output.rgb = add_fog(output.rgb, input.pos_w.w, input.pos_w.z);

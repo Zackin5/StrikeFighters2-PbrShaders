@@ -146,7 +146,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture, input.norm_w);
 
 	float metallic = MESHREFLECTION_METALLIC;
-	float roughness = 1 - ((1 - MESHREFLECTION_ROUGHNESS) * irradiance.a);
+	float roughness = MESHREFLECTION_ROUGHNESS;
 
 	float4 output = float4(g_DiffuseColor, 1.0);
 	

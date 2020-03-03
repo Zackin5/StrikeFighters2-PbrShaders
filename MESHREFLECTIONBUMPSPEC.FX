@@ -184,7 +184,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	// PBR irradiance map
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture3, input.norm_w);
 	float metallic = MESHREFLECTION_METALLIC;
-	float roughness = 1 - ((1 - MESHREFLECTION_ROUGHNESS) * irradiance.a);
+	float roughness = MESHREFLECTION_ROUGHNESS;
 
 	// PBR IBF specular
 	// float4 specular = SampleIBLColor(g_MaterialTexture1, input.norm_w, roughness);
@@ -218,7 +218,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 			float3 normal = CalculateBumpNormal(input.norm_w, input.pos_w.xyz, input.uv0, Np, g_BumpAmount);
 
 			// Calculate PBR
-			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, 1.0 - sm);
+			output = Pbr(input, input.norm_w, albedo, irradiance, specular, metallic, mRoughness);
 					  	
 			if (g_bFogEnabled)
 			{
