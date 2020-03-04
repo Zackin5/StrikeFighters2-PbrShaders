@@ -163,7 +163,7 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float metallic = TWNORMAL_METALLIC;
+	const float metallic = TWNORMAL_SPECULAR;
 	const float roughness = TWNORMAL_ROUGHNESS;
 	
 	float4 output;

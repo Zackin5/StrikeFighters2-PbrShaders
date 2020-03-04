@@ -153,14 +153,14 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     float3 ambient = (kD * diffuse) + calcSpecular;
 
     // Finalize
-	float4 color = float4(ambient, albedo.a) + float4(Lo, albedo.a);  // TODO: fix specular alpha?
+	float4 color = float4(ambient, albedo.a) + float4(Lo, RgbToLum(Lo));
     
     // Tonemap HDR and gamma
 	color = color / (color + 1.0);
 	color = pow(color, 1.0/2.2);
 		
 	return color;
-	// return float4(F0, 1);
+	// return float4(Lo, 1);
 }
 
 float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float metallic, float roughness)

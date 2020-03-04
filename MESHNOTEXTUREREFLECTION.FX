@@ -145,7 +145,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	// PBR irradiance map
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture, input.norm_w);
 
-	float metallic = MESHREFLECTION_METALLIC;
+	float metallic = MESHREFLECTION_SPECULAR;
 	float roughness = MESHREFLECTION_ROUGHNESS;
 
 	float4 output = float4(g_DiffuseColor, 1.0);

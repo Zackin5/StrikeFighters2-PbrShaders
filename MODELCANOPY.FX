@@ -147,7 +147,7 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float metallic = CANOPY_METALLIC;
+	const float metallic = CANOPY_SPECULAR;
 	const float roughness = CANOPY_ROUGHNESS;
 	float4 output;
 	
@@ -155,21 +155,20 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	{
 		float4 irradiance;
 		float4 albedo = g_MaterialTexture0.Sample(g_TextureClampSampler, input.uv0);
+		const float3 N = normalize(input.norm_w);
 		
 		if (g_ReflectionStage == 1)
 		{
 			// PBR irradiance map
 			irradiance = CalculateIrradianceMap(g_MaterialTexture1, input.norm_w);
+			
+			// do per-pixel light sourcing
+			output = Pbr(input, input.norm_w, albedo, irradiance, metallic, roughness);		
 		}
 		else
-		{
-			irradiance = float4(g_AmbientLight, metallic);
-		}
-		
-		const float3 N = normalize(input.norm_w);
-			
-		// do per-pixel light sourcing
-		output = Pbr(input, input.norm_w, albedo, irradiance, metallic, roughness);				
+		{			
+			output = Pbr(input, input.norm_w, albedo, metallic, roughness);	
+		}				
 	
 		if (g_bFogEnabled)
 		{

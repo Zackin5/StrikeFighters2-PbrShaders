@@ -122,7 +122,7 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float metallic = NOTTEXTURE_METALLIC;
+	const float metallic = NOTTEXTURE_SPECULAR;
 	const float roughness = NOTTEXTURE_ROUGHNESS;
 
 	float4 output = float4(1.0, 1.0, 1.0, g_Transparency);

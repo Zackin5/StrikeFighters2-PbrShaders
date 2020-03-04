@@ -164,7 +164,7 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float dMetallic = MESHDECAL_METALLIC;
+	const float dMetallic = MESHDECAL_SPECULAR;
 	const float dRoughness = MESHDECAL_ROUGHNESS;
 
 	if (g_bInReflection)
@@ -174,7 +174,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		
 	// PBR irradiance map
 	float4 irradiance = CalculateIrradianceMap(g_MaterialTexture3, input.norm_w);
-	float mMetallic = MESHREFLECTION_METALLIC;
+	float mMetallic = MESHREFLECTION_SPECULAR;
 	float mRoughness = MESHREFLECTION_ROUGHNESS;
 
 	// PBR IBF specular

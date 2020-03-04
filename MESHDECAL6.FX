@@ -176,10 +176,10 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 {
-	const float mMetallic = TWNORMAL_METALLIC;
+	const float mMetallic = TWNORMAL_SPECULAR;
 	const float mRoughness = TWNORMAL_ROUGHNESS;
 
-	const float dMetallic = MESHDECAL_METALLIC;
+	const float dMetallic = MESHDECAL_SPECULAR;
 	const float dRoughness = MESHDECAL_ROUGHNESS;
 		
 	float4 output;
