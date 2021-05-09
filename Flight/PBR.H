@@ -61,6 +61,9 @@ float4 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
 	}
 	irradiance = PI * irradiance * (1.0 / float(nSamples));
 
+	// Combine with SF2 ambient lighting
+	irradiance.rgb = lerp(irradiance.rgb, g_AmbientLight.rgb, 0.5f);
+
     return irradiance;
 }
 
@@ -124,7 +127,6 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     // IBF calculations
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
-    // float3 specular = (envBRDF.x * prefilteredColor) + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
 	float3 specular = prefilteredColor * (F * (envBRDF.x + envBRDF.y));
 	// float3 specular = albedo * EnvBRDFApprox(specularColor, roughness, vdotN);
     
@@ -147,15 +149,19 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 
 float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float metallic, float roughness)
 {
-	// Calculate fake irradiance map
-	float worldNDot = dot(normal, float3(0.0, 0.0, 1.0)) + 0.7;
     float sunNDot = dot(normal, -g_DirLight.dir);
 
+	// Calculate fake irradiance map
+	/*float worldNDot = dot(normal, float3(0.0, 0.0, 1.0)) + 0.7;
 	float sunLightCurve = smoothstep(0.2, 1.0, sunNDot);
+	// float3 ambLight = lerp(g_AmbientLight * 0.5, g_AmbientLight, worldNDot);
+    // float3 sunLight = lerp(0, g_DirLight.color, sunHorizonDot);
+	float4 ambLight = float4(g_AmbientLight + (g_DirLight.color * worldNDot * sunLightCurve), 1);
+	float4 sunLight = float4(g_DirLight.color * sunNDot, 1);*/
 
-	float3 ambLight = lerp(g_AmbientLight * 0.5, g_AmbientLight, worldNDot);
-    float3 sunLight = lerp(0, g_DirLight.color, sunLightCurve);
-    // float3 irrad = saturate(ambLight + sunLight);
+	// Vanilla calculations
+	float4 ambLight = float4(g_AmbientLight, 1);
+	float4 sunLight = float4(g_DirLight.color * sunNDot, 1);
 	
-    return Pbr(input, normal, albedo, float4(ambLight, 1), float4(sunLight, 1), metallic, roughness);
+    return Pbr(input, normal, albedo, ambLight, sunLight, metallic, roughness);
 }
