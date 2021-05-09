@@ -150,7 +150,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     // IBF calculations
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
-    float3 specular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+    float3 specular = (envBRDF.x * prefilteredColor) + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
     
     float3 ambient = kD * diffuse + specular;
 
