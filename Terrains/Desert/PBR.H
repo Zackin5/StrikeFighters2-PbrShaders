@@ -1,6 +1,7 @@
-#include "PBR_CONFIG.H"
-#include "PBR_COMMON.H"
-#include "TWCOMMON.H"
+// TODO: fix refernce pathing issues to resolve need to have a duplicate PBR.H
+#include "..\..\Flight\PBR_CONFIG.H"
+#include "..\..\Flight\PBR_COMMON.H"
+#include "..\..\Flight\TWCOMMON.H"
 
 float3 fresnelSchlick(float cosTheta, float3 F0)
 {
