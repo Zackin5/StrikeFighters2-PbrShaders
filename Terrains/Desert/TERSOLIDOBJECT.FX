@@ -160,7 +160,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	float4 output = float4(0.0, 0.0, 0.0, 1.0);
 	float4 albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv); 
 
-	output = Pbr(input, input.norm_w, albedo, metallic, roughness);
+	output = Pbr(input, input.norm_w, albedo, float4(input.diffuse, 1), metallic, roughness);
 	output.rgb = add_fog(output, input.pos_w.w, input.pos_w.z);
 
 	if (fade_alpha < 1.0)

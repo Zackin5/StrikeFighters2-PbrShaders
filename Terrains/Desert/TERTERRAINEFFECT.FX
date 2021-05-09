@@ -164,8 +164,9 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	if (input.pos_w.w < g_FogDistance.y)
 	{
 		float4 albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv.xy);
+		float4 diffuse = float4(g_AmbientLight + g_DirLight.color * max(0, dot(input.norm_w, -g_DirLight.dir)), 1);
 
-		output = Pbr(input, input.norm_w, albedo, metallic, roughness).rgb;
+		output = Pbr(input, input.norm_w, albedo, diffuse, metallic, roughness).rgb;
 		
 		// do per-pixel linear fog
 		output = add_fog(output, input.pos_w.w, input.pos_w.z);

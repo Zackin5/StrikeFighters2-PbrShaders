@@ -79,6 +79,7 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
   	float4 	pos_w		: COLOR;				//xyz = world space pos, w = fogdist
+	float3 	norm_w		: COLOR2;				//world space normal
 	float2 	uv			: TEXCOORD;
 
     float4	pos			: SV_POSITION;
@@ -87,6 +88,7 @@ struct VS_OUTPUT
 struct PS_INPUT
 {
   	float4 	pos_w		: COLOR;				//xyz = world space pos, w = fogdist
+	float3 	norm_w		: COLOR2;				//world space normal
 	float2 	uv			: TEXCOORD;
 };
 
@@ -116,12 +118,14 @@ VS_OUTPUT VS( VS_INPUT input )
     
 	const float4 P = float4((input.pos + g_MeshOffsetPos), 1.0);	// position, world-space	
 	const float4 Pv = mul(P, g_mWorldToView);	// position in view-space
+	const float3 N = input.norm;	
 
 //	output.pos = mul(P, g_mViewProj);		
 	output.pos = compute_pos(P);
 
 	output.pos_w.xyz = P.xyz;
 	output.pos_w.w = Pv.z;
+	output.norm_w = N;
 	output.uv = input.uv;
 
     return output;    
@@ -155,7 +159,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		clip(-1);
 	}
 
-	output = Pbr(input, float3(0,1,0), albedo, metallic, roughness);
+	output = Pbr(input, input.norm_w, albedo, metallic, roughness);
 	output.rgb = add_fog(output, input.pos_w.w, input.pos_w.z);
 	
 	if (fade_alpha < 1.0)
