@@ -1,6 +1,6 @@
 #ifndef PBR_INCLUDES
 #define PBR_INCLUDES
-#include "PBR_CONFIG.H"
+#include "CONFIG_PBR.H"
 #include "PBR_COMMON.H"
 #include "TWCOMMON.H"
 #endif
@@ -164,7 +164,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float 
 
 	// Vanilla calculations
 	float4 ambLight = float4(g_AmbientLight, 1);
-	float4 sunLight = float4(g_DirLight.color * sunNDot, 1);
+	float4 sunLight = float4(saturate(g_DirLight.color * sunNDot), 1);
 	
     return Pbr(input, normal, albedo, ambLight, sunLight, metallic, roughness);
 }
