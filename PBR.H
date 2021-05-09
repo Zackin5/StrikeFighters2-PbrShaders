@@ -106,7 +106,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 
 	float3 V = -normalize(input.pos_w.xyz);
 	
-	float3 F0 = specular / 12.5f + 0.04f; // Scale specular to min/max at 0.0f to 0.08f
+	float3 F0 = specular / 25.0f + 0.04f; // Scale specular to min/max at 0.0f to 0.08f
     // F0 = lerp(F0, albedo, metallic);
 	
 	float3 Lo = float3(0.0, 0.0, 0.0);
@@ -148,7 +148,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     // IBF calculations
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
-    float3 calcSpecular = envBRDF.x + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+    float3 calcSpecular = (envBRDF.x * prefilteredColor) + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
     
     float3 ambient = (kD * diffuse) + calcSpecular;
 
@@ -160,7 +160,6 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	color = pow(color, 1.0/2.2);
 		
 	return color;
-	// return float4(Lo, 1);
 }
 
 float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float metallic, float roughness)
@@ -179,6 +178,19 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float 
 	float3 ambLight = lerp(g_AmbientLight * 0.5, g_AmbientLight, worldNDot);
     float3 sunLight = lerp(0, g_DirLight.color, sunLightCurve);
     float3 irrad = saturate(ambLight + sunLight);
+	
+	float3 Lo = float3(0.0, 0.0, 0.0);
+	
+    [unroll(8)]
+	for (int i = 0; i < g_NumPointLights; i++)
+	{
+		float Ndot = dot(normal, g_aPointLights[i].pos - input.pos_w.xyz);
+
+		if(Ndot > 0)
+		{
+			Lo += CalculateLightRadiance(g_aPointLights[i].pos, input.pos_w.xyz, g_aPointLights[i].color) * Ndot;
+		}
+	}
 	
     return Pbr(input, normal, albedo, float4(irrad, 1), metallic, roughness);
 }
