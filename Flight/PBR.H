@@ -1,6 +1,9 @@
+#ifndef PBR_INCLUDES
+#define PBR_INCLUDES
 #include "PBR_CONFIG.H"
 #include "PBR_COMMON.H"
 #include "TWCOMMON.H"
+#endif
 
 float3 CalculateLightRadiance(float3 lightPos, float3 worldPos, float3 lightColor)
 {
@@ -78,7 +81,7 @@ float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normal
     return normal;
 }
 
-float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float3 specularColor, float metallic, float roughness)
+float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float3 specularColor, float metallic, float roughness, float ao = 1.0f)
 {
 	// Degamma diffuse texture
 	albedo = pow(albedo, 2.2);
@@ -130,7 +133,7 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	float3 specular = prefilteredColor * (F * (envBRDF.x + envBRDF.y));
 	// float3 specular = albedo * EnvBRDFApprox(specularColor, roughness, vdotN);
     
-    float3 ambient = kD * diffuse + specular;
+    float3 ambient = (kD * diffuse + specular) * ao;
 
     // Finalize
 	float4 color = float4(ambient, albedo.a) + float4(Lo, albedo.a);  // TODO: fix specular alpha?

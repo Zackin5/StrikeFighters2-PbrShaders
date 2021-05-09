@@ -164,9 +164,21 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	if (input.pos_w.w < g_FogDistance.y)
 	{
 		float4 albedo = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv.xy);
-
-		output = Pbr(input, input.norm_w, albedo, metallic, roughness).rgb;
 		
+		float3 N = normalize(input.norm_w.xyz);
+		if (input.norm_w.w > 0.0)
+		{
+			float3 Nt = g_BumpTexture.Sample(g_BumpSampler, frac(input.uv.zw)).xyz * 2.0 - 1.0;
+			
+			Nt = lerp(N0, Nt, input.norm_w.w);
+			Nt = normalize(Nt);
+			
+			N = Nt;
+		}
+
+		float3 sunColor = g_DirLight.color * max(0, dot(N, -g_DirLight.dir));
+		output = Pbr(input, N, albedo, float4(g_AmbientLight, 1), float4(sunColor, 1), metallic, roughness).rgb;
+
 		// do per-pixel linear fog
 		output = add_fog(output, input.pos_w.w, input.pos_w.z);
 	}

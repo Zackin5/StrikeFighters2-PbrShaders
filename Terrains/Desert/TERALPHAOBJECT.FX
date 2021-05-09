@@ -159,13 +159,15 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		clip(-1);
 	}
 
-	output = Pbr(input, input.norm_w, albedo, metallic, roughness);
+	float fakeAo = (1 - RgbToLum(albedo.rgb)) * albedo.a;
+	output = Pbr(input, input.norm_w, albedo, metallic, roughness, fakeAo);
 	output.rgb = add_fog(output, input.pos_w.w, input.pos_w.z);
 	
 	if (fade_alpha < 1.0)
 	{
 		output.a *= fade_alpha;
 	}
+	
 	return (saturate(output));
 }
 

@@ -73,7 +73,7 @@ struct VS_INPUT
 
 struct VS_OUTPUT
 {
-	float3 	diffuse		: COLOR0;
+	float3 	sunColor	: COLOR0;
   	float4 	pos_w		: COLOR1;				//xyz = world space pos, w = fogdist
 	float3 	norm_w		: COLOR2;				//world space normal
 	float2 	uv			: TEXCOORD;
@@ -83,7 +83,7 @@ struct VS_OUTPUT
 
 struct PS_INPUT
 {
-	float3 	diffuse		: COLOR0;
+	float3 	sunColor	: COLOR0;
   	float4 	pos_w		: COLOR1;				//xyz = world space pos, w = fogdist
 	float3 	norm_w		: COLOR2;				//world space normal
 	float2 	uv			: TEXCOORD;
@@ -108,7 +108,7 @@ VS_OUTPUT VS( VS_INPUT input )
 //	output.pos = mul(P, g_mViewProj);		
 	output.pos = compute_pos(P);
 
- 	output.diffuse = g_AmbientLight + g_DirLight.color * max(0, dot(N, L));
+ 	output.sunColor = g_DirLight.color * max(0, dot(N, L));
 	output.pos_w.xyz = P.xyz;
 	output.pos_w.w = Pv.z;
 	output.norm_w = N;
@@ -132,7 +132,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	{
 		float4 albedo = g_MaterialTexture.Sample(g_LinearSampler, input.uv); 
 		
-		output = Pbr(input, input.norm_w, albedo, metallic, roughness).rgb;
+		output = Pbr(input, input.norm_w, albedo, float4(g_AmbientLight, 1), float4(input.sunColor, 1), metallic, roughness).rgb;
 			
 		output = add_fog(output, input.pos_w.w, input.pos_w.z);
 	}
