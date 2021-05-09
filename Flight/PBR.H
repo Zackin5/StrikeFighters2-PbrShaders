@@ -2,42 +2,6 @@
 #include "PBR_COMMON.H"
 #include "TWCOMMON.H"
 
-float3 fresnelSchlick(float cosTheta, float3 F0)
-{
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}  
-
-float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-{
-    return F0 + (max((1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
-}   
-
-float DistributionGGX(float3 N, float3 H, float roughness)
-{
-    float a      = roughness*roughness;
-    float a2     = a*a;
-    float NdotH  = saturate(dot(N, H));
-    float NdotH2 = NdotH*NdotH;
-	
-    float num   = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-	
-    return num / denom;	
-}
-
-float2 EnvironmentBRDF( float g, float vdotN)
-{
-    g = 1.0 - g;
-	float4 t = float4( 1.0 / 0.96, 0.475, ( 0.0275 - 0.25 * 0.04 ) / 0.96, 0.25 );
-	t *= float4( g, g, g, g );
-	t += float4( 0.0, 0.0, ( 0.015 - 0.75 * 0.04 ) / 0.96, 0.75 );
-	half a0 = t.x * min( t.y, exp2( -9.28 * vdotN ) ) + t.z;
-	half a1 = t.w;
-	
-	return float2(a0, a1);
-}
-
 float3 CalculateLightRadiance(float3 lightPos, float3 worldPos, float3 lightColor)
 {
 	float distance = length(lightPos - worldPos);
@@ -160,7 +124,9 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     // IBF calculations
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
-    float3 specular = (envBRDF.x * prefilteredColor) + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+    // float3 specular = (envBRDF.x * prefilteredColor) + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+	float3 specular = prefilteredColor * (F * (envBRDF.x + envBRDF.y));
+	// float3 specular = albedo * EnvBRDFApprox(specularColor, roughness, vdotN);
     
     float3 ambient = kD * diffuse + specular;
 

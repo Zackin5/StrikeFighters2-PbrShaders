@@ -161,7 +161,9 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
     // IBF calculations
     float3 prefilteredColor = specularColor; // TODO: mipmap envmap
     float2 envBRDF = EnvironmentBRDF(roughness, vdotN);
-    float3 specular = (envBRDF.x * prefilteredColor) + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+    // float3 specular = (envBRDF.x * prefilteredColor) + prefilteredColor * (F * (envBRDF.y - envBRDF.x));
+    float3 specular = prefilteredColor * (F * (envBRDF.x + envBRDF.y));
+	// float3 specular = albedo * EnvBRDFApprox(specularColor, roughness, vdotN);
     
     float3 ambient = kD * diffuse + specular;
 
@@ -190,7 +192,6 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float 
 
 	float3 ambLight = lerp(g_AmbientLight * 0.5, g_AmbientLight, worldNDot);
     float3 sunLight = lerp(0, g_DirLight.color, sunLightCurve);
-    float3 irrad = saturate(ambLight + sunLight);
 	
-    return Pbr(input, normal, albedo, float4(irrad, 1), metallic, roughness);
+    return Pbr(input, normal, albedo, float4(ambLight, 1), float4(sunLight, 1), metallic, roughness);
 }
