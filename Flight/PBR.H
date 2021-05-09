@@ -139,7 +139,6 @@ float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4
 	
     float vdotN = saturate(dot(normal, V));
     float3 F = fresnelSchlickRoughness(vdotN, F0, roughness);
-    // float3 F = a0r(roughness, vdotN);
 
     // Ambient lighting via irradiance
     float3 kD = 1.0 - F;
