@@ -56,6 +56,9 @@ struct PS_INPUT
     float2 uv		: TEXCOORD;
 };
 
+#include "CONFIG_FX.H"
+#include "FX_COMMON.H"
+
 //--------------------------------------------------------------------------------------
 // Vertex Shader
 //--------------------------------------------------------------------------------------
@@ -86,11 +89,11 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	
 	if (!g_bClampTexture)
 	{
-		output = g_MaterialTexture.Sample(g_TextureWrapSampler, input.uv);
+	    output = SampleChromaticAberration(g_MaterialTexture, g_TextureWrapSampler, input.uv, HUD_CA_OFFSET, HUD_CA_STRENGTH);
 	}
 	else
 	{
-		output = g_MaterialTexture.Sample(g_TextureClampSampler, input.uv);
+	    output = SampleChromaticAberration(g_MaterialTexture, g_TextureClampSampler, input.uv, HUD_CA_OFFSET, HUD_CA_STRENGTH);
 	}	
 
 	output *= input.diffuse;
