@@ -152,15 +152,16 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 		clip(-1);
 	}
 
-	float4 output = float4(0.0, 0.0, 0.0, 1.0);
 	float4 albedo = g_MaterialTexture.Sample(g_LinearSampler, input.uv); 
 	if (albedo.a <= 0.0)
 	{
 		clip(-1);
 	}
 
-	float fakeAo = (1 - RgbToLum(albedo.rgb)) * albedo.a;
-	output = Pbr(input, input.norm_w, albedo, metallic, roughness, fakeAo);
+	float fakeAo = pow(1 - (RgbToLum(albedo.rgb)), 2) * albedo.a;
+	float3 sunColor = g_DirLight.color * max(0, dot(input.norm_w, -g_DirLight.dir));
+
+	float4 output = Pbr(input, input.norm_w, albedo, float4(g_AmbientLight, 1) * fakeAo, float4(sunColor, 1) * fakeAo, metallic, roughness);
 	output.rgb = add_fog(output, input.pos_w.w, input.pos_w.z);
 	
 	if (fade_alpha < 1.0)
