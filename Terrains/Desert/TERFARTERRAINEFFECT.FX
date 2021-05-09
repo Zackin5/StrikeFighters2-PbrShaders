@@ -132,7 +132,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	{
 		float4 albedo = g_MaterialTexture.Sample(g_LinearSampler, input.uv); 
 		
-		output = Pbr(input, input.norm_w, albedo, float4(input.diffuse, 1), metallic, roughness).rgb;
+		output = Pbr(input, input.norm_w, albedo, metallic, roughness).rgb;
 			
 		output = add_fog(output, input.pos_w.w, input.pos_w.z);
 	}

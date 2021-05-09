@@ -138,8 +138,8 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 { 
-	const float metallic = TERRAIN_METALLIC;
-	const float roughness = TERRAIN_ROUGHNESS;
+	const float metallic = TREE_METALLIC;
+	const float roughness = TREE_ROUGHNESS;
 
 	if (input.pos_w.w >= g_FogDistance.y)
 	{
