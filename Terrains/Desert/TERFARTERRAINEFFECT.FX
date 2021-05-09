@@ -124,15 +124,14 @@ VS_OUTPUT VS( VS_INPUT input )
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 { 
-	// const float metallic = TERRAIN_METALLIC;
-	// const float roughness = TERRAIN_ROUGHNESS;
+	const float metallic = TERRAIN_METALLIC;
+	const float roughness = TERRAIN_ROUGHNESS;
 	float3 output;
 	
-	/*if (input.pos_w.w < g_FogDistance.y)
+	if (input.pos_w.w < g_FogDistance.y)
 	{
 		float4 albedo = g_MaterialTexture.Sample(g_LinearSampler, input.uv); 
 		
-		// output *= compute_per_pixel_light_source(input.diffuse.rgb, input.norm_w, input.pos_w.xyz);
 		output = Pbr(input, input.norm_w, albedo, metallic, roughness).rgb;
 			
 		output = add_fog(output, input.pos_w.w, input.pos_w.z);
@@ -140,9 +139,8 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	else
 	{
 		output = g_FogColor;
-	}*/
-	// return (float4(saturate(output), 1.0));
-	return float4(1,1,0,1);
+	}
+	return (float4(saturate(output), 1.0));
 }
 
 //--------------------------------------------------------------------------------------
