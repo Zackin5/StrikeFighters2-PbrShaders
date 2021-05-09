@@ -14,3 +14,11 @@ Found address history:
 
 - 00770BFC
 - 007A0BFA
+
+## Todo Items ##
+
+- Refactor PBR.H references in Terrains
+- Fix specular issues on reflection shaders
+- Better cubemapping irradiance calculation
+- Glowing gunsights
+- Sparkly chaff

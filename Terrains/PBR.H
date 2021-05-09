@@ -1,52 +1,8 @@
 // TODO: fix refernce pathing issues to resolve need to have a duplicate PBR.H
+// NOTE: paths are relative to file including PBR.H, NOT PBR.H's path
 #include "..\..\Flight\PBR_CONFIG.H"
 #include "..\..\Flight\PBR_COMMON.H"
 #include "..\..\Flight\TWCOMMON.H"
-
-float3 fresnelSchlick(float cosTheta, float3 F0)
-{
-    return F0 + (1.0 - F0) * pow(1.0 - cosTheta, 5.0);
-}  
-
-float3 fresnelSchlickRoughness(float cosTheta, float3 F0, float roughness)
-{
-    return F0 + (max((1.0 - roughness), F0) - F0) * pow(1.0 - cosTheta, 5.0);
-}   
-
-float DistributionGGX(float3 N, float3 H, float roughness)
-{
-    float a      = roughness*roughness;
-    float a2     = a*a;
-    float NdotH  = saturate(dot(N, H));
-    float NdotH2 = NdotH*NdotH;
-	
-    float num   = a2;
-    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
-    denom = PI * denom * denom;
-	
-    return num / denom;	
-}
-
-float2 EnvironmentBRDF( float g, float vdotN)
-{
-    g = 1.0 - g;
-	float4 t = float4( 1.0 / 0.96, 0.475, ( 0.0275 - 0.25 * 0.04 ) / 0.96, 0.25 );
-	t *= float4( g, g, g, g );
-	t += float4( 0.0, 0.0, ( 0.015 - 0.75 * 0.04 ) / 0.96, 0.75 );
-	half a0 = t.x * min( t.y, exp2( -9.28 * vdotN ) ) + t.z;
-	half a1 = t.w;
-	
-	return float2(a0, a1);
-}
-
-float3 CalculateLightRadiance(float3 lightPos, float3 worldPos, float3 lightColor)
-{
-	float distance = length(lightPos - worldPos);
-    float attenuation = 1.0f / (distance * distance);
-	float3 radiance = lightColor * attenuation;
-
-	return radiance;
-}
 
 float3 CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 worldPos, float3 F0, float3 N, float4 albedo, float roughness, float metallic)
 {
@@ -73,43 +29,6 @@ float3 CalculateLightReflectance(float3 lightPos, float3 radianceColor, float3 w
 	float NdotL = saturate(dot(N, L));
 
     return (kD * albedo / PI + specular) * radianceColor * NdotL;
-}
-
-float4 CalculateIrradianceMap(Texture2D cubemapTex, float3 normal)
-{
-	float4 irradiance = 0.0f;
-
-	const float3 Nv = mul(normal, (float3x3)g_mWorldToView);				// normal, view-space
-	const float sampleDelta = IRRADIANCE_SAMPLEDELTA;
-	float nSamples = 0.0;
-	for(float phi = 0.0; phi < 2.0 * PI; phi += sampleDelta)
-	{
-		for(float theta = 0.0; theta < 0.5 * PI; theta += sampleDelta)
-		{
-			float3 tangentSample = float3(sin(theta) * cos(phi), sin(theta) * sin(phi), cos(theta));
-
-			float2 uv = 0.0;
-			uv.x = 0.5 * tangentSample.x * Nv.x + 0.5;
-			uv.y = -0.5 * tangentSample.z * Nv.y + 0.5;
-
-			irradiance += cubemapTex.Sample(pbr_TextureClampSampler, uv) * cos(theta) * sin(theta);
-			nSamples++;
-		}
-	}
-	irradiance = PI * irradiance * (1.0 / float(nSamples));
-
-    return irradiance;
-}
-
-float3 CalculateBumpNormal(float3 norm_w, float3 pos_w, float2 uv, float3 normalTexColor, float bumpAmount)
-{
-    const float3 N0 = normalize(norm_w);
-    const float3x3 tangentFrame = compute_tangent_frame(N0, pos_w, uv);
-
-    float3 Nt = lerp(float3(0.0,0.0,1.0), normalTexColor, bumpAmount);
-    float3 normal = normalize(mul(Nt, tangentFrame));
-
-    return normal;
 }
 
 float4 Pbr(PS_INPUT input, float3 normal : NORMAL, float4 albedo : COLOR, float4 irradiance, float3 specularColor, float metallic, float roughness)

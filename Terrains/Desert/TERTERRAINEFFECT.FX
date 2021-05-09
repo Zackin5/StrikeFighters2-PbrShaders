@@ -152,7 +152,7 @@ VS_OUTPUT VS( VS_INPUT input )
 //--------------------------------------------------------------------------------------
 // PixelShader
 //--------------------------------------------------------------------------------------
-#include "PBR.H"
+#include "..\PBR.H"
 
 float4 PS( PS_INPUT input ) : SV_TARGET
 { 
@@ -174,6 +174,7 @@ float4 PS( PS_INPUT input ) : SV_TARGET
 	{
 		output = g_FogColor;
 	}
+	
 	return (float4(saturate(output), 1.0));
 }
 
