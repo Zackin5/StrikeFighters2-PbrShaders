@@ -23,6 +23,9 @@
 #define CANOPY_METALLIC 0.0f
 #define CANOPY_ROUGHNESS 0.1f
 
+#define TV_METALLIC 0.0f
+#define TV_ROUGHNESS 0.0f
+
 // Sample size for irradiance map calculations
 // The smaller the value the more accurate, but at cost of performance
 #define IRRADIANCE_SAMPLEDELTA 0.15
